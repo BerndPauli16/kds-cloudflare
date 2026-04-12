@@ -229,6 +229,7 @@ async function partialPrintTicket(env, ticketId, selectedItems) {
     throw Object.assign(new Error('Keine Artikel ausgewählt'), { status: 400 });
   }
 
+  // Print-Job anlegen
   const payload = JSON.stringify({
     ticket_number: ticket.ticket_number,
     table_number:  ticket.table_number,
@@ -237,10 +238,43 @@ async function partialPrintTicket(env, ticketId, selectedItems) {
     partial:       true,
     printed_at:    new Date().toISOString(),
   });
-
   await env.DB.prepare(
     'INSERT INTO print_jobs (ticket_id, payload) VALUES (?, ?)'
   ).bind(ticketId, payload).run();
+
+  // Mengen im Bon reduzieren
+  for (const sel of selectedItems) {
+    const existing = await env.DB.prepare(
+      'SELECT id, quantity FROM ticket_items WHERE ticket_id = ? AND product_name = ?'
+    ).bind(ticketId, sel.product_name).first();
+
+    if (!existing) continue;
+
+    const newQty = existing.quantity - sel.quantity;
+
+    if (newQty <= 0) {
+      // Artikel komplett entfernen
+      await env.DB.prepare(
+        'DELETE FROM ticket_items WHERE id = ?'
+      ).bind(existing.id).run();
+    } else {
+      // Menge reduzieren
+      await env.DB.prepare(
+        'UPDATE ticket_items SET quantity = ? WHERE id = ?'
+      ).bind(newQty, existing.id).run();
+    }
+  }
+
+  // Prüfen ob noch Artikel übrig — wenn nicht, Bon schließen
+  const { results: remaining } = await env.DB.prepare(
+    'SELECT id FROM ticket_items WHERE ticket_id = ?'
+  ).bind(ticketId).all();
+
+  if (remaining.length === 0) {
+    await env.DB.prepare(
+      "UPDATE tickets SET status = 'done' WHERE id = ?"
+    ).bind(ticketId).run();
+  }
 
   return { ...ticket, partial: true };
 }

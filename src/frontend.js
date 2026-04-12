@@ -112,6 +112,7 @@ export function getHTML() {
   .t-item{cursor:pointer;border-radius:5px;padding:3px 5px;margin:-3px -5px;transition:background .15s;user-select:none}
   .t-item:hover{background:var(--sur2)}
   .t-item.sel{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4)}
+  .t-item.done{opacity:.4;cursor:not-allowed;text-decoration:line-through;pointer-events:none}
   .t-item .sel-badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px;background:var(--amber);color:#000;font-size:12px;font-weight:800;margin-left:6px;flex-shrink:0}
   .btn-partial{flex:1;background:transparent;color:var(--amber);border:2px solid var(--amber);font-family:var(--font);font-size:13px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:9px;border-radius:6px;cursor:pointer;transition:all .15s}
   .btn-partial:hover:not(:disabled){background:rgba(245,158,11,.12)}
@@ -256,10 +257,13 @@ function rOrders(){
     const card=document.createElement('div');card.className='tc'+(t.status==='printing'?' printing':'');card.id='card-'+t.id;
     const itemsHtml=t.items.map((i,idx)=>{
       const sk=t.id+'-'+idx;const sq=S.sel[sk]||0;
-      const selCls=sq>0?' sel':'';
+      const isDone=i.quantity<=0;
+      const selCls=sq>0?' sel':(isDone?' done':'');
       const badge=sq>0?'<span class="sel-badge">'+sq+'</span>':'';
       const extras=i.extras&&i.extras.length?'<div class="t-extras">'+i.extras.map(e=>'<span class="t-extra">'+e+'</span>').join('')+'</div>':'';
-      return '<div class="t-item'+selCls+'" onclick="selItem('+t.id+','+idx+','+i.quantity+')"><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
+      const isDone2=i.quantity<=0;
+      const selCls2=sq>0?' sel':(isDone2?' done':'');
+      return '<div class="t-item'+selCls2+'"'+(isDone2?'':' onclick="selItem('+t.id+','+idx+','+i.quantity+')"><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
     }).join('');
     const hasSel=t.items.some((_,idx)=>(S.sel[t.id+'-'+idx]||0)>0);
     card.innerHTML='<div class="tc-head"><div><div class="tc-num">#'+t.ticket_number+'</div><div class="tc-tbl">Tisch '+(t.table_number||'–')+'</div></div><div style="display:flex;align-items:center;gap:6px"><span class="tc-wait '+urg+'">'+t.wait_mins+'min</span>'+(t.station_color?'<span class="s-badge" style="background:'+t.station_color+'22;color:'+t.station_color+';border:1px solid '+t.station_color+'44">'+t.station_name+'</span>':'')+'</div></div><div class="tc-items">'+itemsHtml+'</div><div class="tc-foot"><button class="btn-p" onclick="prt('+t.id+')" '+(t.status==='printing'?'disabled':'')+'>🖨 '+(t.status==='printing'?'Druckt…':'Drucken')+'</button><button class="btn-partial" id="bp-'+t.id+'" onclick="partPrt('+t.id+')" '+(hasSel?'':'disabled')+'>✂ Teildruck</button></div>';
@@ -308,6 +312,7 @@ function renderTot(){
 }
 
 function selItem(tid,idx,maxQty){
+  if(maxQty<=0) return;
   const k=tid+'-'+idx;
   S.sel[k]=((S.sel[k]||0)+1)>maxQty?0:(S.sel[k]||0)+1;
   // Nur diese Karte neu rendern
@@ -319,7 +324,7 @@ function selItem(tid,idx,maxQty){
     const selCls=sq>0?' sel':'';
     const badge=sq>0?'<span class="sel-badge">'+sq+'</span>':'';
     const extras=i.extras&&i.extras.length?'<div class="t-extras">'+i.extras.map(e=>'<span class="t-extra">'+e+'</span>').join('')+'</div>':'';
-    return '<div class="t-item'+selCls+'" onclick="selItem('+tid+','+i2+','+i.quantity+')"><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
+    return '<div class="t-item'+selCls+'"'+(isDone?'':' onclick="selItem('+tid+','+i2+','+i.quantity+')"><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
   }).join('');
   const hasSel=t.items.some((_,i2)=>(S.sel[tid+'-'+i2]||0)>0);
   const bp=document.getElementById('bp-'+tid);if(bp)bp.disabled=!hasSel;
