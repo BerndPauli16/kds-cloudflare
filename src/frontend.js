@@ -27,7 +27,7 @@ export function getHTML() {
   html,body{width:100%;height:100%;overflow:hidden}
   body{font-family:var(--font);background:var(--bg);color:var(--txt);font-size:16px;transition:background .2s,color .2s}
 
-  #app{width:100vw;height:100vh;display:grid;grid-template-rows:var(--hh) 1fr;overflow:hidden}
+  #app{width:100vw;height:100vh;display:grid;grid-template-rows:var(--hh) auto 1fr;overflow:hidden}
 
   header{
     background:var(--sur);border-bottom:1px solid var(--brd);
@@ -62,12 +62,11 @@ export function getHTML() {
   .ws-dot.ok{background:var(--green);box-shadow:0 0 7px var(--green)}
   .ws-dot.err{background:var(--red)}
 
-  /* Main: Landscape = sidebar links | Portrait = tickets oben, summary UNTEN */
-  #main{display:grid;grid-template-columns:230px 1fr;overflow:hidden}
+  #tickets{overflow-y:auto;padding:14px;}
 
-  aside{background:var(--sur);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;order:0}
+  #live-summe{background:var(--sur);border-bottom:2px solid var(--brd);display:grid;grid-template-rows:auto 1fr auto;max-height:220px;flex-shrink:0}
 
-  .sb-head{padding:12px 16px 8px;border-bottom:1px solid var(--brd);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;flex-shrink:0}
+  .ls-head{padding:12px 16px 8px;border-bottom:1px solid var(--brd);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;flex-shrink:0}
 
   .totals-list{flex:1;overflow-y:auto;padding:6px 0}
 
@@ -80,7 +79,7 @@ export function getHTML() {
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .tot-num.up{animation:pulse .5s ease}
 
-  .sb-foot{padding:10px 16px;border-top:1px solid var(--brd);font-size:13px;color:var(--muted);display:flex;justify-content:space-between;flex-shrink:0}
+  .ls-foot{padding:10px 16px;border-top:1px solid var(--brd);font-size:13px;color:var(--muted);display:flex;justify-content:space-between;flex-shrink:0}
   .sb-foot strong{font-family:var(--mono);color:var(--txt)}
 
   .ta{overflow-y:auto;padding:14px;order:1}
@@ -175,13 +174,13 @@ export function getHTML() {
     <div class="ws-dot" id="wsDot"></div>
   </header>
 
-  <div id="main">
+  
     <aside>
-      <div class="sb-head">Live-Summe</div>
+      <div class="ls-head">Live-Summe</div>
       <div class="totals-list" id="totList"></div>
-      <div class="sb-foot"><span>Offene Bons</span><strong id="totBons">0</strong></div>
+      <div class="ls-foot"><span>Offene Bons</span><strong id="totBons">0</strong></div>
     </aside>
-    <div class="ta" id="ta"></div>
+    <div id="tickets"></div>
   </div>
 </div>
 
@@ -237,7 +236,7 @@ function sv(v){S.view=v;document.getElementById('tO').classList.toggle('active',
 function render(){S.view==='orders'?rOrders():rProducts();}
 
 function rOrders(){
-  const ta=document.getElementById('ta');
+  const ta=document.getElementById('tickets');
   if(!S.tickets.length){ta.innerHTML='<div class="empty"><div class="empty-i">✓</div><div class="empty-t">Keine offenen Bons</div></div>';return;}
   const g=document.createElement('div');g.className='og';
   S.tickets.forEach(t=>{
@@ -251,7 +250,7 @@ function rOrders(){
 }
 
 function rProducts(){
-  const ta=document.getElementById('ta');
+  const ta=document.getElementById('tickets');
   const map={};
   S.tickets.forEach(t=>t.items.forEach(i=>{if(!map[i.product_name])map[i.product_name]=[];map[i.product_name].push({table:t.table_number,qty:i.quantity});}));
   if(!Object.keys(map).length){ta.innerHTML='<div class="empty"><div class="empty-i">✓</div><div class="empty-t">Keine offenen Bons</div></div>';return;}
