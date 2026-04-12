@@ -1,0 +1,12 @@
+{
+  "name": "kds-print-agent",
+  "version": "1.0.0",
+  "description": "KDS TCP-Proxy + ESC/POS Parser für Raspberry Pi",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
