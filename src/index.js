@@ -96,6 +96,13 @@ async function handleAPI(request, env, url, method) {
       return jsonResponse(await completeJob(env, jobId));
     }
 
+    // ── Client-IP (für Monitor-Anzeige) ─────────
+    if (path === '/client-ip' && method === 'GET') {
+      const ip = request.headers.get('CF-Connecting-IP') ||
+                 request.headers.get('X-Forwarded-For') || 'unbekannt';
+      return jsonResponse({ ip });
+    }
+
     // ── Live-Summen ──────────────────────────────
     if (path === '/totals' && method === 'GET') {
       const stationId = url.searchParams.get('station');
