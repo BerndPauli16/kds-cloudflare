@@ -1,0 +1,28 @@
+name = "kds-worker"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ─── D1 Datenbank ───────────────────────────────────────────
+[[d1_databases]]
+binding = "DB"
+database_name = "kds-db"
+database_id = "DEINE_D1_DATABASE_ID"   # ← nach `wrangler d1 create kds-db` eintragen
+
+# ─── R2 Objekt-Speicher ─────────────────────────────────────
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "kds-storage"
+
+# ─── Durable Objects (WebSocket-Echtzeit) ───────────────────
+[durable_objects]
+bindings = [
+  { name = "KDS_ROOM", class_name = "KDSRoom" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["KDSRoom"]
+
+# ─── Secrets (via `wrangler secret put API_KEY`) ─────────────
+# API_KEY  → schützt den /api Endpunkt für den Print-Agent
