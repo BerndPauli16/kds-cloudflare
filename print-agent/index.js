@@ -1,127 +1,97 @@
 #!/usr/bin/env node
 // ════════════════════════════════════════════════
 //  KDS Print-Agent – Raspberry Pi
-//
-//  Zwei Aufgaben:
-//  1. TCP-Proxy: POS → Pi:9100 → Drucker:9100
-//     (Pi gibt sich als Drucker aus)
-//  2. ESC/POS Parser: extrahiert Klartext
-//     und schickt Ticket an Cloudflare Worker
-//
-//  Umgebungsvariablen (oder .env):
-//    PRINTER_IP       IP des echten Druckers
-//    PRINTER_PORT     Port des Druckers (default 9100)
-//    PROXY_PORT       Port auf dem Pi horcht (default 9100)
-//    KDS_WORKER_URL   https://kds-cloudflare.XXX.workers.dev
-//    KDS_API_KEY      API-Key für den Worker
+//  TCP-Proxy: POS → Pi:9100 → Drucker:9100
+//  Parser:    ESC/POS Text → Cloudflare Worker
 // ════════════════════════════════════════════════
 
 require('dotenv').config();
-const net  = require('net');
-const http = require('http');
+const net = require('net');
 
 const CFG = {
-  printerIp:   process.env.PRINTER_IP      || '192.168.1.100',
-  printerPort: parseInt(process.env.PRINTER_PORT)  || 9100,
-  proxyPort:   parseInt(process.env.PROXY_PORT)    || 9100,
-  workerUrl:   process.env.KDS_WORKER_URL  || '',
-  apiKey:      process.env.KDS_API_KEY     || '',
-  station:     process.env.KDS_STATION     || 'Küche',
-  stationId:   parseInt(process.env.KDS_STATION_ID) || 1,
+  printerIp:    process.env.PRINTER_IP       || '192.168.1.100',
+  printerPort:  parseInt(process.env.PRINTER_PORT)  || 9100,
+  proxyPort:    parseInt(process.env.PROXY_PORT)    || 9100,
+  workerUrl:    (process.env.KDS_WORKER_URL  || '').replace(/\/$/, ''),
+  apiKey:       process.env.KDS_API_KEY      || '',
+  stationId:    parseInt(process.env.KDS_STATION_ID) || 1,
 };
 
 let jobCounter = 0;
 
 // ════════════════════════════════════════════════
-//  1. TCP-PROXY SERVER
+//  TCP-PROXY
 // ════════════════════════════════════════════════
 const server = net.createServer((posSocket) => {
-  const clientIp = posSocket.remoteAddress;
-  console.log(`[PROXY] Verbindung von ${clientIp}`);
-
-  // Verbindung zum echten Drucker öffnen
-  const printerSocket = new net.Socket();
+  console.log(`[PROXY] Verbindung von ${posSocket.remoteAddress}`);
   const chunks = [];
 
+  const printerSocket = new net.Socket();
   printerSocket.connect(CFG.printerPort, CFG.printerIp, () => {
-    console.log(`[PROXY] Verbunden mit Drucker ${CFG.printerIp}:${CFG.printerPort}`);
+    console.log(`[PROXY] → Drucker ${CFG.printerIp}:${CFG.printerPort}`);
   });
 
-  // POS → Pi → Drucker (rohe Bytes 1:1 durchleiten)
+  // Bytes 1:1 durchleiten UND für Parser sammeln
   posSocket.on('data', (data) => {
-    chunks.push(data);           // Für Parser speichern
-    printerSocket.write(data);   // Direkt an Drucker weiterleiten
+    chunks.push(data);
+    printerSocket.write(data);
   });
 
-  // Drucker → Pi → POS (Antworten zurückleiten, z.B. Status)
-  printerSocket.on('data', (data) => {
-    posSocket.write(data);
-  });
+  printerSocket.on('data', (data) => posSocket.write(data));
 
-  // Verbindung geschlossen: gesammelten Job parsen + an Worker schicken
   posSocket.on('end', () => {
-    console.log(`[PROXY] POS-Verbindung beendet`);
     printerSocket.end();
-
     if (CFG.workerUrl && chunks.length > 0) {
       const raw = Buffer.concat(chunks);
-      parseAndForward(raw);
+      parseAndForward(raw).catch(e => console.error('[PARSER] Fehler:', e.message));
     }
   });
 
-  // Fehlerbehandlung
-  posSocket.on('error',    (e) => console.error('[PROXY] POS-Fehler:', e.message));
-  printerSocket.on('error',(e) => console.error('[PROXY] Drucker-Fehler:', e.message));
-
+  posSocket.on('error',     e => console.error('[POS]     Fehler:', e.message));
+  printerSocket.on('error', e => console.error('[DRUCKER] Fehler:', e.message));
   printerSocket.on('close', () => posSocket.destroy());
   posSocket.on('close',     () => printerSocket.destroy());
 });
 
 server.listen(CFG.proxyPort, '0.0.0.0', () => {
   console.log(`[PROXY] Horcht auf Port ${CFG.proxyPort}`);
-  console.log(`[PROXY] Leite weiter an ${CFG.printerIp}:${CFG.printerPort}`);
 });
 
 // ════════════════════════════════════════════════
-//  2. ESC/POS PARSER → Cloudflare Worker
+//  ESC/POS → Klartext
+//  Entfernt alle Steuerzeichen, gibt Zeilen zurück
 // ════════════════════════════════════════════════
-
-// Alle ESC/POS-Steuerzeichen entfernen → reinen Text extrahieren
-function stripEscPos(buf) {
-  const lines = [];
-  let current = '';
+function escposToLines(buf) {
   let i = 0;
+  let current = '';
+  const lines = [];
 
   while (i < buf.length) {
     const b = buf[i];
 
-    // ESC-Sequenzen überspringen
+    // ESC-Sequenzen (1b xx [optional n])
     if (b === 0x1b) {
       i++;
       if (i >= buf.length) break;
-      const next = buf[i];
-
-      // ESC @ (Init), ESC a n (Align), ESC ! n (Font) usw. → überspringen
-      if ([0x40, 0x61, 0x21, 0x45, 0x47, 0x4d, 0x52, 0x74, 0x7b].includes(next)) {
-        i += 2; continue;
+      const cmd = buf[i]; i++;
+      // Befehle mit einem weiteren Byte
+      if ([0x21,0x2d,0x45,0x47,0x4d,0x52,0x61,0x74,0x7b].includes(cmd)) { i++; }
+      // ESC * (Bitmap): n1 n2 data
+      else if (cmd === 0x2a && i+1 < buf.length) {
+        const n2 = buf[i+1]; i += 2 + (n2 * 3);
       }
-      // ESC * (Bitmap) → viele Bytes
-      if (next === 0x2a) { i += 4; continue; }
-      i++; continue;
+      continue;
     }
 
-    // GS-Sequenzen überspringen
-    if (b === 0x1d) {
-      i += 3; continue;
-    }
+    // GS-Sequenzen (1d)
+    if (b === 0x1d) { i += 4; continue; }
 
-    // DLE, STX, ETX, ENQ usw.
+    // Steuerzeichen außer LF/CR
     if (b < 0x20 && b !== 0x0a && b !== 0x0d) { i++; continue; }
 
-    // Zeilenumbruch
     if (b === 0x0a || b === 0x0d) {
-      const trimmed = current.trim();
-      if (trimmed) lines.push(trimmed);
+      const line = current.trimEnd();
+      if (line.length > 0) lines.push(line);
       current = '';
       i++; continue;
     }
@@ -133,84 +103,123 @@ function stripEscPos(buf) {
   return lines;
 }
 
-// Aus Textzeilen ein strukturiertes Ticket bauen
+// ════════════════════════════════════════════════
+//  Parser: erkennt das Format
+//
+//  --------------------------------
+//  SMARTE EVENTS
+//  Ihr Partner für Events
+//  --------------------------------
+//  Datum: xx.xx.xxxx   Uhrzeit: xx:xx
+//  --------------------------------
+//  ARTIKEL              MENGE
+//  --------------------------------
+//  Bier                   2
+//  Spritzer               5
+//  --------------------------------
+//  GESAMT ARTIKEL:       7
+//  --------------------------------
+//  Vielen Dank!
+//  --------------------------------
+// ════════════════════════════════════════════════
 function parseTicket(lines) {
+  const items      = [];
   let tableNumber  = null;
   let ticketNumber = null;
-  const items      = [];
+  let inItemBlock  = false;
+  let datum        = null;
+  let uhrzeit      = null;
 
   for (const line of lines) {
-    // Tisch erkennen (z.B. "Tisch 5", "Table 3", "Tisch: 12")
-    const tischMatch = line.match(/(?:tisch|table)[:\s#]*(\d+)/i);
-    if (tischMatch) { tableNumber = tischMatch[1]; continue; }
+    // Trennlinien überspringen
+    if (/^[-─═=\s]{4,}$/.test(line)) continue;
 
-    // Bon-Nummer (z.B. "Bon #42", "#0042", "Nr. 15")
-    const bonMatch = line.match(/(?:bon|nr|#)[:\s#]*(\d+)/i) || line.match(/^#(\d+)/);
-    if (bonMatch) { ticketNumber = bonMatch[1]; continue; }
+    // Tisch-Nummer (falls vorhanden, z.B. "Tisch: 5" oder "Tisch 3")
+    const tischM = line.match(/tisch[:\s#]*(\d+)/i);
+    if (tischM) { tableNumber = tischM[1]; continue; }
 
-    // Artikel erkennen (z.B. "2x Bier", "1 Schnitzel", "3  Cola")
-    const itemMatch = line.match(/^(\d+)\s*[xX×]?\s+(.+)$/);
-    if (itemMatch) {
-      const qty  = parseInt(itemMatch[1]);
-      const name = itemMatch[2].trim();
-      if (qty > 0 && qty < 100 && name.length > 0 && name.length < 60) {
-        items.push({ product_name: name, quantity: qty, extras: [] });
+    // Bon-/Rechnungsnummer
+    const bonM = line.match(/(?:bon|rechnung|beleg|nr)[.:\s#]*(\d+)/i);
+    if (bonM) { ticketNumber = bonM[1]; continue; }
+
+    // Datum und Uhrzeit
+    const datumM = line.match(/datum[:\s]*([\d.]+)/i);
+    if (datumM) { datum = datumM[1]; }
+    const zeitM = line.match(/uhrzeit[:\s]*([\d:]+)/i);
+    if (zeitM) { uhrzeit = zeitM[1]; }
+
+    // Beginn des Artikel-Blocks
+    if (/^ARTIKEL\s+MENGE/i.test(line)) { inItemBlock = true; continue; }
+
+    // Ende des Artikel-Blocks
+    if (/^GESAMT/i.test(line)) { inItemBlock = false; continue; }
+
+    // Artikel-Zeile: "Produktname        Menge"
+    // Produktname links, Menge (Zahl) rechts durch mind. 2 Leerzeichen getrennt
+    if (inItemBlock) {
+      const itemM = line.match(/^(.+?)\s{2,}(\d+)\s*$/);
+      if (itemM) {
+        const name = itemM[1].trim();
+        const qty  = parseInt(itemM[2]);
+        if (name.length > 0 && name.length < 60 && qty > 0 && qty < 10000) {
+          items.push({ product_name: name, quantity: qty, extras: [] });
+        }
       }
     }
   }
 
-  return { tableNumber, ticketNumber, items };
+  return { items, tableNumber, ticketNumber, datum, uhrzeit };
 }
 
+// ════════════════════════════════════════════════
+//  Parsed Ticket → Cloudflare Worker
+// ════════════════════════════════════════════════
 async function parseAndForward(rawBuf) {
-  const lines  = stripEscPos(rawBuf);
+  const lines  = escposToLines(rawBuf);
   const parsed = parseTicket(lines);
 
-  // Kein erkennbarer Inhalt → überspringen
-  if (parsed.items.length === 0 && !parsed.tableNumber) {
-    console.log('[PARSER] Kein auswertbarer Inhalt erkannt, übersprungen');
+  if (parsed.items.length === 0) {
+    console.log('[PARSER] Keine Artikel gefunden – übersprungen');
     return;
   }
 
   jobCounter++;
-  const ticketId = `PI-${Date.now()}-${jobCounter}`;
+  const ticketId = parsed.ticketNumber || `PI-${Date.now()}-${jobCounter}`;
 
   const body = {
-    ticket_number: parsed.ticketNumber || ticketId,
-    table_number:  parsed.tableNumber  || '?',
+    ticket_number: ticketId,
+    table_number:  parsed.tableNumber || '–',
     station_id:    CFG.stationId,
-    items:         parsed.items.length > 0
-      ? parsed.items
-      : [{ product_name: lines.slice(0, 3).join(' / '), quantity: 1, extras: [] }],
+    items:         parsed.items,
   };
 
-  console.log(`[PARSER] Ticket: Tisch ${body.table_number} | ${body.items.length} Artikel`);
+  console.log(`[PARSER] Ticket #${ticketId} | Tisch ${body.table_number} | ${body.items.length} Artikel:`);
+  parsed.items.forEach(i => console.log(`         ${i.quantity}× ${i.product_name}`));
 
   try {
-    const url  = `${CFG.workerUrl}/api/tickets`;
-    const res  = await fetch(url, {
+    const res = await fetch(`${CFG.workerUrl}/api/tickets`, {
       method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key':    CFG.apiKey,
-      },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': CFG.apiKey },
+      body:    JSON.stringify(body),
     });
     const data = await res.json();
-    console.log(`[WORKER] Ticket erstellt:`, data.id || data);
+    if (res.ok) {
+      console.log(`[WORKER] ✓ Ticket erstellt (ID: ${data.id})`);
+    } else {
+      console.error(`[WORKER] ✗ Fehler:`, data.error || data);
+    }
   } catch (err) {
-    console.error('[WORKER] Fehler beim Weiterleiten:', err.message);
+    console.error('[WORKER] ✗ Netzwerkfehler:', err.message);
   }
 }
 
 // ════════════════════════════════════════════════
-//  Start-Info
+//  Start
 // ════════════════════════════════════════════════
 console.log('╔══════════════════════════════════════╗');
 console.log('║   KDS Print-Agent – Raspberry Pi     ║');
 console.log('╚══════════════════════════════════════╝');
 console.log(`Proxy Port : ${CFG.proxyPort}`);
 console.log(`Drucker    : ${CFG.printerIp}:${CFG.printerPort}`);
-console.log(`Station    : ${CFG.station} (ID: ${CFG.stationId})`);
 console.log(`Worker     : ${CFG.workerUrl || '(nicht konfiguriert)'}`);
 console.log('');
