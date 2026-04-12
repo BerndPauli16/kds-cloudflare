@@ -27,7 +27,7 @@ export function getHTML() {
   html,body{width:100%;height:100%;overflow:hidden}
   body{font-family:var(--font);background:var(--bg);color:var(--txt);font-size:16px;transition:background .2s,color .2s}
 
-  #app{width:100vw;height:100vh;display:grid;grid-template-rows:var(--hh) auto 1fr;overflow:hidden}
+  #app{width:100vw;height:100vh;display:grid;grid-template-rows:var(--hh) 1fr;overflow:hidden}
 
   header{
     background:var(--sur);border-bottom:1px solid var(--brd);
@@ -62,11 +62,12 @@ export function getHTML() {
   .ws-dot.ok{background:var(--green);box-shadow:0 0 7px var(--green)}
   .ws-dot.err{background:var(--red)}
 
-  #tickets{overflow-y:auto;padding:14px;}
+  #main{display:grid;grid-template-columns:230px 1fr;overflow:hidden}
+  .ta{overflow-y:auto;padding:14px}
 
-  #live-summe{background:var(--sur);border-bottom:2px solid var(--brd);display:grid;grid-template-rows:auto 1fr auto;max-height:220px;flex-shrink:0}
+  aside{background:var(--sur);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden}
 
-  .ls-head{padding:12px 16px 8px;border-bottom:1px solid var(--brd);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;flex-shrink:0}
+  .sb-head{padding:12px 16px 8px;border-bottom:1px solid var(--brd);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;flex-shrink:0}
 
   .totals-list{flex:1;overflow-y:auto;padding:6px 0}
 
@@ -79,7 +80,7 @@ export function getHTML() {
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .tot-num.up{animation:pulse .5s ease}
 
-  .ls-foot{padding:10px 16px;border-top:1px solid var(--brd);font-size:13px;color:var(--muted);display:flex;justify-content:space-between;flex-shrink:0}
+  .sb-foot{padding:10px 16px;border-top:1px solid var(--brd);font-size:13px;color:var(--muted);display:flex;justify-content:space-between;flex-shrink:0}
   .sb-foot strong{font-family:var(--mono);color:var(--txt)}
 
   .ta{overflow-y:auto;padding:14px;order:1}
@@ -108,6 +109,13 @@ export function getHTML() {
   .btn-p:hover:not(:disabled){background:#fbbf24} .btn-p:disabled{opacity:.35;cursor:default}
   .btn-d{background:transparent;border:1px solid var(--brd);color:var(--muted);font-family:var(--font);font-size:13px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:9px 14px;border-radius:6px;cursor:pointer;transition:all .15s}
   .btn-d:hover{border-color:var(--green);color:var(--green)}
+  .t-item{cursor:pointer;border-radius:5px;padding:3px 5px;margin:-3px -5px;transition:background .15s;user-select:none}
+  .t-item:hover{background:var(--sur2)}
+  .t-item.sel{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4)}
+  .t-item .sel-badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px;background:var(--amber);color:#000;font-size:12px;font-weight:800;margin-left:6px;flex-shrink:0}
+  .btn-partial{flex:1;background:transparent;color:var(--amber);border:2px solid var(--amber);font-family:var(--font);font-size:13px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:9px;border-radius:6px;cursor:pointer;transition:all .15s}
+  .btn-partial:hover:not(:disabled){background:rgba(245,158,11,.12)}
+  .btn-partial:disabled{opacity:.25;cursor:default;border-color:var(--brd);color:var(--muted)}
 
   /* ── Produkt-Ansicht ── */
   .pv-wrap{display:flex;flex-direction:column;gap:0;height:100%}
@@ -178,18 +186,18 @@ export function getHTML() {
     <div class="ws-dot" id="wsDot"></div>
   </header>
 
-  
+  <div id="main">
     <aside>
-      <div class="ls-head">Live-Summe</div>
+      <div class="sb-head">Live-Summe</div>
       <div class="totals-list" id="totList"></div>
-      <div class="ls-foot"><span>Offene Bons</span><strong id="totBons">0</strong></div>
+      <div class="sb-foot"><span>Offene Bons</span><strong id="totBons">0</strong></div>
     </aside>
     <div id="tickets"></div>
   </div>
 </div>
 
 <script>
-const S={view:'orders',tickets:[],totals:[],ws:null,prev:{}};
+const S={view:'orders',tickets:[],totals:[],ws:null,prev:{},sel:{}};
 let curRot='landscape';
 
 function toggleTheme(){
@@ -245,10 +253,17 @@ function rOrders(){
   const g=document.createElement('div');g.className='og';
   S.tickets.forEach(t=>{
     const urg=t.wait_mins>=15?'urg':(t.wait_mins>=8?'wrn':'');
-    const items=t.items.map(i=>'<div class="t-item"><div><div style="display:flex;gap:9px;align-items:baseline"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span></div>'+(i.extras&&i.extras.length?'<div class="t-extras">'+i.extras.map(e=>'<span class="t-extra">'+e+'</span>').join('')+'</div>':'')+'</div></div>').join('');
-    const c=document.createElement('div');c.className='tc'+(t.status==='printing'?' printing':'');
-    c.innerHTML='<div class="tc-head"><div><div class="tc-num">#'+t.ticket_number+'</div><div class="tc-tbl">Tisch '+(t.table_number||'–')+'</div></div><div style="display:flex;align-items:center;gap:6px"><span class="tc-wait '+urg+'">'+t.wait_mins+'min</span>'+(t.station_color?'<span class="s-badge" style="background:'+t.station_color+'22;color:'+t.station_color+';border:1px solid '+t.station_color+'44">'+t.station_name+'</span>':'')+'</div></div><div class="tc-items">'+items+'</div><div class="tc-foot"><button class="btn-p" onclick="prt('+t.id+')" '+(t.status==='printing'?'disabled':'')+'>🖨 '+(t.status==='printing'?'Druckt…':'Drucken')+'</button><button class="btn-d" onclick="don('+t.id+')">✓</button></div>';
-    g.appendChild(c);
+    const card=document.createElement('div');card.className='tc'+(t.status==='printing'?' printing':'');card.id='card-'+t.id;
+    const itemsHtml=t.items.map((i,idx)=>{
+      const sk=t.id+'-'+idx;const sq=S.sel[sk]||0;
+      const selCls=sq>0?' sel':'';
+      const badge=sq>0?'<span class="sel-badge">'+sq+'</span>':'';
+      const extras=i.extras&&i.extras.length?'<div class="t-extras">'+i.extras.map(e=>'<span class="t-extra">'+e+'</span>').join('')+'</div>':'';
+      return '<div class="t-item'+selCls+'" onclick="selItem('+t.id+','+idx+','+i.quantity+')"><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
+    }).join('');
+    const hasSel=t.items.some((_,idx)=>(S.sel[t.id+'-'+idx]||0)>0);
+    card.innerHTML='<div class="tc-head"><div><div class="tc-num">#'+t.ticket_number+'</div><div class="tc-tbl">Tisch '+(t.table_number||'–')+'</div></div><div style="display:flex;align-items:center;gap:6px"><span class="tc-wait '+urg+'">'+t.wait_mins+'min</span>'+(t.station_color?'<span class="s-badge" style="background:'+t.station_color+'22;color:'+t.station_color+';border:1px solid '+t.station_color+'44">'+t.station_name+'</span>':'')+'</div></div><div class="tc-items">'+itemsHtml+'</div><div class="tc-foot"><button class="btn-p" onclick="prt('+t.id+')" '+(t.status==='printing'?'disabled':'')+'>🖨 '+(t.status==='printing'?'Druckt…':'Drucken')+'</button><button class="btn-partial" id="bp-'+t.id+'" onclick="partPrt('+t.id+')" '+(hasSel?'':'disabled')+'>✂ Teildruck</button><button class="btn-d" onclick="don('+t.id+')">✓</button></div>';
+    g.appendChild(card);
   });
   ta.innerHTML='';ta.appendChild(g);
 }
@@ -290,6 +305,36 @@ function renderTot(){
   list.innerHTML=S.totals.map(t=>'<div class="tot-row"><span class="tot-name">'+t.product_name+'</span><span class="tot-num'+(prev[t.product_name]!==t.total?' up':'')+'" >'+t.total+'</span></div>').join('')||'<div style="padding:14px;color:var(--muted);font-size:15px">Keine offenen Bons</div>';
   document.getElementById('totBons').textContent=S.tickets.length;
   S.prev=next;
+}
+
+function selItem(tid,idx,maxQty){
+  const k=tid+'-'+idx;
+  S.sel[k]=((S.sel[k]||0)+1)>maxQty?0:(S.sel[k]||0)+1;
+  // Nur diese Karte neu rendern
+  const t=S.tickets.find(x=>x.id===tid);if(!t)return;
+  const card=document.getElementById('card-'+tid);if(!card)return;
+  const itemsDiv=card.querySelector('.tc-items');
+  itemsDiv.innerHTML=t.items.map((i,i2)=>{
+    const sk=tid+'-'+i2;const sq=S.sel[sk]||0;
+    const selCls=sq>0?' sel':'';
+    const badge=sq>0?'<span class="sel-badge">'+sq+'</span>':'';
+    const extras=i.extras&&i.extras.length?'<div class="t-extras">'+i.extras.map(e=>'<span class="t-extra">'+e+'</span>').join('')+'</div>':'';
+    return '<div class="t-item'+selCls+'" onclick="selItem('+tid+','+i2+','+i.quantity+')"><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
+  }).join('');
+  const hasSel=t.items.some((_,i2)=>(S.sel[tid+'-'+i2]||0)>0);
+  const bp=document.getElementById('bp-'+tid);if(bp)bp.disabled=!hasSel;
+}
+
+async function partPrt(tid){
+  const t=S.tickets.find(x=>x.id===tid);if(!t)return;
+  const items=t.items.map((i,idx)=>({...i,quantity:S.sel[tid+'-'+idx]||0})).filter(i=>i.quantity>0);
+  if(!items.length)return;
+  const bp=document.getElementById('bp-'+tid);if(bp){bp.disabled=true;bp.textContent='⏳ Druckt…';}
+  try{
+    await fetch('/api/tickets/'+tid+'/partial-print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})});
+    t.items.forEach((_,idx)=>delete S.sel[tid+'-'+idx]);
+    await Promise.all([loadT(),loadTot()]);
+  }catch(e){if(bp){bp.disabled=false;bp.textContent='✂ Teildruck';}}
 }
 
 async function prt(id){await fetch('/api/tickets/'+id+'/print',{method:'POST'});await Promise.all([loadT(),loadTot()]);}

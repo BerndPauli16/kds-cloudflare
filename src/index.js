@@ -76,6 +76,16 @@ async function handleAPI(request, env, url, method) {
     }
 
     // ── Ticket als erledigt markieren ────────────
+    // ── Teildruck ────────────────────────────────────────────
+    const partialMatch = path.match(/^\/tickets\/(\d+)\/partial-print$/);
+    if (partialMatch && method === 'POST') {
+      const id     = parseInt(partialMatch[1]);
+      const body   = await request.json();
+      const result = await partialPrintTicket(env, id, body.items || []);
+      await broadcastUpdate(env, result.station_id, { type: 'ticket_partial_printed', ticketId: id });
+      return jsonResponse(result);
+    }
+
     const doneMatch = path.match(/^\/tickets\/(\d+)\/done$/);
     if (doneMatch && method === 'POST') {
       const id     = parseInt(doneMatch[1]);
@@ -206,6 +216,33 @@ async function printTicket(env, ticketId) {
   ).bind(ticketId).run();
 
   return { ...ticket, status: 'printing' };
+}
+
+
+async function partialPrintTicket(env, ticketId, selectedItems) {
+  const ticket = await env.DB.prepare(
+    'SELECT t.*, s.name as station_name FROM tickets t LEFT JOIN stations s ON t.station_id = s.id WHERE t.id = ?'
+  ).bind(ticketId).first();
+
+  if (!ticket) throw Object.assign(new Error('Not found'), { status: 404 });
+  if (!selectedItems || selectedItems.length === 0) {
+    throw Object.assign(new Error('Keine Artikel ausgewählt'), { status: 400 });
+  }
+
+  const payload = JSON.stringify({
+    ticket_number: ticket.ticket_number,
+    table_number:  ticket.table_number,
+    station_name:  ticket.station_name,
+    items:         selectedItems,
+    partial:       true,
+    printed_at:    new Date().toISOString(),
+  });
+
+  await env.DB.prepare(
+    'INSERT INTO print_jobs (ticket_id, payload) VALUES (?, ?)'
+  ).bind(ticketId, payload).run();
+
+  return { ...ticket, partial: true };
 }
 
 async function markDone(env, ticketId) {
