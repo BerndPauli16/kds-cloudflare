@@ -64,31 +64,23 @@ export function getHTML() {
 
   /* Main: Landscape = sidebar links | Portrait = tickets oben, summary UNTEN */
   #main{display:grid;grid-template-columns:230px 1fr;overflow:hidden}
-  #main.portrait{grid-template-columns:1fr;grid-template-rows:1fr 130px}
 
   aside{background:var(--sur);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;order:0}
-  #main.portrait aside{border-right:none;border-top:1px solid var(--brd);flex-direction:row;order:2;height:130px}
 
   .sb-head{padding:12px 16px 8px;border-bottom:1px solid var(--brd);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;flex-shrink:0}
-  #main.portrait .sb-head{border-bottom:none;border-right:1px solid var(--brd);display:flex;align-items:center;padding:0 14px}
 
   .totals-list{flex:1;overflow-y:auto;padding:6px 0}
-  #main.portrait .totals-list{overflow-x:auto;overflow-y:hidden;display:flex;flex-direction:row;padding:0}
 
   .tot-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--brd);transition:background .2s}
   .tot-row:hover{background:var(--sur2)}
-  #main.portrait .tot-row{flex-direction:column;justify-content:center;align-items:center;border-bottom:none;border-right:1px solid var(--brd);padding:8px 18px;min-width:80px;gap:3px}
 
   .tot-name{font-size:16px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
-  #main.portrait .tot-name{font-size:12px;max-width:76px;text-align:center}
   .tot-num{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--amber);min-width:36px;text-align:right}
-  #main.portrait .tot-num{font-size:28px;text-align:center;min-width:unset}
 
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .tot-num.up{animation:pulse .5s ease}
 
   .sb-foot{padding:10px 16px;border-top:1px solid var(--brd);font-size:13px;color:var(--muted);display:flex;justify-content:space-between;flex-shrink:0}
-  #main.portrait .sb-foot{display:none}
   .sb-foot strong{font-family:var(--mono);color:var(--txt)}
 
   .ta{overflow-y:auto;padding:14px;order:1}
@@ -185,7 +177,7 @@ export function getHTML() {
 
   <div id="main">
     <aside>
-      <div class="sb-head">Live-Summen</div>
+      <div class="sb-head">Live-Summe</div>
       <div class="totals-list" id="totList"></div>
       <div class="sb-foot"><span>Offene Bons</span><strong id="totBons">0</strong></div>
     </aside>
@@ -207,8 +199,7 @@ function toggleTheme(){
 
 function rot(mode){
   curRot=mode;
-  const p=mode==='left'||mode==='right';
-  document.getElementById('main').className=p?'portrait':'';
+  // Layout bleibt immer Landscape (sidebar links → physisch unten bei Linksdrehung)
   ['rL','rU','rR'].forEach((id,i)=>document.getElementById(id).classList.toggle('active',mode===['left','landscape','right'][i]));
   applyT();
   localStorage.setItem('kr',mode);
