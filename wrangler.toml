@@ -22,7 +22,7 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["KDSRoom"]
+new_sqlite_classes = ["KDSRoom"]   # Free Plan — bei Upgrade auf Enterprise: auf new_classes = ["KDSRoom"] ändern
 
 # ─── Secrets (via `wrangler secret put API_KEY`) ─────────────
 # API_KEY  → schützt den /api Endpunkt für den Print-Agent
