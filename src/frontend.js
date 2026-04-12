@@ -262,7 +262,7 @@ function rOrders(){
       return '<div class="t-item'+selCls+'" onclick="selItem('+t.id+','+idx+','+i.quantity+')"><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
     }).join('');
     const hasSel=t.items.some((_,idx)=>(S.sel[t.id+'-'+idx]||0)>0);
-    card.innerHTML='<div class="tc-head"><div><div class="tc-num">#'+t.ticket_number+'</div><div class="tc-tbl">Tisch '+(t.table_number||'–')+'</div></div><div style="display:flex;align-items:center;gap:6px"><span class="tc-wait '+urg+'">'+t.wait_mins+'min</span>'+(t.station_color?'<span class="s-badge" style="background:'+t.station_color+'22;color:'+t.station_color+';border:1px solid '+t.station_color+'44">'+t.station_name+'</span>':'')+'</div></div><div class="tc-items">'+itemsHtml+'</div><div class="tc-foot"><button class="btn-p" onclick="prt('+t.id+')" '+(t.status==='printing'?'disabled':'')+'>🖨 '+(t.status==='printing'?'Druckt…':'Drucken')+'</button><button class="btn-partial" id="bp-'+t.id+'" onclick="partPrt('+t.id+')" '+(hasSel?'':'disabled')+'>✂ Teildruck</button><button class="btn-d" onclick="don('+t.id+')">✓</button></div>';
+    card.innerHTML='<div class="tc-head"><div><div class="tc-num">#'+t.ticket_number+'</div><div class="tc-tbl">Tisch '+(t.table_number||'–')+'</div></div><div style="display:flex;align-items:center;gap:6px"><span class="tc-wait '+urg+'">'+t.wait_mins+'min</span>'+(t.station_color?'<span class="s-badge" style="background:'+t.station_color+'22;color:'+t.station_color+';border:1px solid '+t.station_color+'44">'+t.station_name+'</span>':'')+'</div></div><div class="tc-items">'+itemsHtml+'</div><div class="tc-foot"><button class="btn-p" onclick="prt('+t.id+')" '+(t.status==='printing'?'disabled':'')+'>🖨 '+(t.status==='printing'?'Druckt…':'Drucken')+'</button><button class="btn-partial" id="bp-'+t.id+'" onclick="partPrt('+t.id+')" '+(hasSel?'':'disabled')+'>✂ Teildruck</button></div>';
     g.appendChild(card);
   });
   ta.innerHTML='';ta.appendChild(g);
@@ -337,7 +337,13 @@ async function partPrt(tid){
   }catch(e){if(bp){bp.disabled=false;bp.textContent='✂ Teildruck';}}
 }
 
-async function prt(id){await fetch('/api/tickets/'+id+'/print',{method:'POST'});await Promise.all([loadT(),loadTot()]);}
+async function prt(id){
+  const btn=document.querySelector('[onclick="prt('+id+')"]');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Druckt…';}
+  await fetch('/api/tickets/'+id+'/print',{method:'POST'});
+  await fetch('/api/tickets/'+id+'/done',{method:'POST'});
+  await Promise.all([loadT(),loadTot()]);
+}
 async function don(id){await fetch('/api/tickets/'+id+'/done', {method:'POST'});await Promise.all([loadT(),loadTot()]);}
 
 init();
