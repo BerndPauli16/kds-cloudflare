@@ -1,0 +1,16 @@
+{
+  "name": "kds-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev":          "wrangler dev",
+    "deploy":       "node pre-deploy.js && wrangler deploy",
+    "deploy:force": "wrangler deploy",
+    "db:init":      "wrangler d1 execute kds-db --file=schema.sql",
+    "db:local":     "wrangler d1 execute kds-db --local --file=schema.sql",
+    "version:show": "node -e \"const v=require('./version.json'); console.log('v'+v.version+' ('+v.build+')'); console.log(v.notes)\""
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
