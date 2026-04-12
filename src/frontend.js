@@ -10,18 +10,18 @@ export function getHTML() {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KDS Monitor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:    #0d0d0d; --sur:  #161618; --sur2: #1f1f22;
     --brd:   #2a2a2f; --brd2: #3a3a42; --txt:  #ffffff;
-    --muted: #666672; --amber:#f59e0b; --adim: #7a4f05;
+    --muted: #d0d0d8; --amber:#f59e0b; --adim: #7a4f05;
     --blue:  #3b82f6; --green:#10b981; --red:  #ef4444;
-    --font:  'Inter', sans-serif; --mono: 'JetBrains Mono', monospace; --hh: 56px;
+    --font:  'Barlow Condensed', sans-serif; --mono: 'Space Mono', monospace; --hh: 56px;
   }
   [data-theme="light"] {
-    --bg:#f0f0f0; --sur:#ffffff; --sur2:#e8e8e8;
-    --brd:#d0d0d0; --brd2:#b0b0b0; --txt:#000000; --muted:#707070;
+    --bg:#f5f5f5; --sur:#ffffff; --sur2:#ececec;
+    --brd:#d0d0d0; --brd2:#b0b0b0; --txt:#000000; --muted:#1a1a1a;
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   html,body{width:100%;height:100%;overflow:hidden}
