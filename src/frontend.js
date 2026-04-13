@@ -244,7 +244,12 @@ function connectWS(){
   const dot=document.getElementById('wsDot');
   ws.onopen=()=>{dot.className='ws-dot ok';setInterval(()=>ws.readyState===1&&ws.send('{"type":"ping"}'),25000);};
   ws.onclose=()=>{dot.className='ws-dot err';setTimeout(connectWS,3000);};
-  ws.onmessage=async({data})=>{const m=JSON.parse(data);if(m.type==='pong')return;await Promise.all([loadT(),loadTot()]);};
+  ws.onmessage=async({data})=>{
+    const m=JSON.parse(data);
+    if(m.type==='pong') return;
+    // 300ms warten damit D1 die Writes committed hat, dann sync
+    setTimeout(()=>Promise.all([loadT(),loadTot()]),300);
+  };
 }
 
 function sv(v){
@@ -382,9 +387,8 @@ async function partPrt(tid){
   // Wenn Produktansicht aktiv: auch dort sofort updaten
   if(S.view==='products') rProducts();
 
-  // API im Hintergrund — kein await, kein Warten
+  // API im Hintergrund — WebSocket macht den finalen Sync, kein loadT() der stale Daten zurückschreibt
   fetch('/api/tickets/'+tid+'/partial-print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})})
-    .then(()=>Promise.all([loadT(),loadTot()]))
     .catch(()=>{if(bp){bp.disabled=false;bp.textContent='✂ Teildruck';}});
 }
 
@@ -406,10 +410,9 @@ async function prt(id){
   rebuildTotals();
   render();
   renderTot();
-  // API im Hintergrund
-  fetch('/api/tickets/'+id+'/print',{method:'POST'}).then(()=>
-    fetch('/api/tickets/'+id+'/done',{method:'POST'})
-  ).then(()=>Promise.all([loadT(),loadTot()]));
+  // API im Hintergrund — WebSocket macht den finalen Sync
+  fetch('/api/tickets/'+id+'/print',{method:'POST'})
+    .then(()=>fetch('/api/tickets/'+id+'/done',{method:'POST'}));
 }
 
 async function don(id){await fetch('/api/tickets/'+id+'/done',{method:'POST'});await Promise.all([loadT(),loadTot()]);}
