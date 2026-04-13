@@ -336,19 +336,45 @@ async function partPrt(tid){
   const items=t.items.map((i,idx)=>({...i,quantity:S.sel[tid+'-'+idx]||0})).filter(i=>i.quantity>0);
   if(!items.length)return;
   const bp=document.getElementById('bp-'+tid);if(bp){bp.disabled=true;bp.textContent='⏳ Druckt…';}
-  try{
-    await fetch('/api/tickets/'+tid+'/partial-print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})});
-    t.items.forEach((_,idx)=>delete S.sel[tid+'-'+idx]);
-    await Promise.all([loadT(),loadTot()]);
-  }catch(e){if(bp){bp.disabled=false;bp.textContent='✂ Teildruck';}}
+  // Sofort Mengen im State reduzieren → UI aktualisiert sich instant
+  items.forEach(sel=>{
+    const item=t.items.find(i=>i.product_name===sel.product_name);
+    if(item){item.quantity-=sel.quantity;}
+  });
+  t.items=t.items.filter(i=>i.quantity>0);
+  if(t.items.length===0) S.tickets=S.tickets.filter(x=>x.id!==tid);
+  t.items.forEach((_,idx)=>delete S.sel[tid+'-'+idx]);
+  rebuildTotals();
+  render();
+  renderTot();
+  // API im Hintergrund
+  fetch('/api/tickets/'+tid+'/partial-print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})})
+    .then(()=>Promise.all([loadT(),loadTot()]))
+    .catch(()=>{if(bp){bp.disabled=false;bp.textContent='✂ Teildruck';}});
+}
+
+function rebuildTotals(){
+  const map={};
+  S.tickets.forEach(t=>t.items.forEach(i=>{
+    if(!map[i.product_name])map[i.product_name]=0;
+    map[i.product_name]+=i.quantity;
+  }));
+  S.totals=Object.entries(map).map(([product_name,total])=>({product_name,total}))
+    .sort((a,b)=>b.total-a.total);
 }
 
 async function prt(id){
   const btn=document.querySelector('[onclick="prt('+id+')"]');
   if(btn){btn.disabled=true;btn.textContent='⏳ Druckt…';}
-  await fetch('/api/tickets/'+id+'/print',{method:'POST'});
-  await fetch('/api/tickets/'+id+'/done',{method:'POST'});
-  await Promise.all([loadT(),loadTot()]);
+  // Sofort aus lokalem State entfernen → UI aktualisiert sich instant
+  S.tickets=S.tickets.filter(t=>t.id!==id);
+  rebuildTotals();
+  render();
+  renderTot();
+  // API im Hintergrund
+  fetch('/api/tickets/'+id+'/print',{method:'POST'}).then(()=>
+    fetch('/api/tickets/'+id+'/done',{method:'POST'})
+  ).then(()=>Promise.all([loadT(),loadTot()]));
 }
 
 async function don(id){await fetch('/api/tickets/'+id+'/done',{method:'POST'});await Promise.all([loadT(),loadTot()]);}
