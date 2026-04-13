@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS tickets (
   ticket_number  TEXT    NOT NULL,
   table_number   TEXT,
   station_id     INTEGER,
-  status         TEXT    DEFAULT 'open',   -- open | printing | done
+  status         TEXT    DEFAULT 'open',
+  original_items TEXT,                     -- JSON: Original-Artikel bei Bon-Eingang   -- open | printing | done
   show_extras    INTEGER DEFAULT 1,        -- 0 = Extras ausblenden
   created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
   printed_at     DATETIME,
