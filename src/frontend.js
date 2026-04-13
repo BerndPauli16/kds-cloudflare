@@ -140,6 +140,11 @@ export function getHTML() {
   #main.products-view aside{display:none}
   .empty-i{font-size:52px} .empty-t{font-size:19px;font-weight:600;letter-spacing:.8px}
 
+  .pin-btn{position:absolute;top:8px;right:8px;background:transparent;border:none;cursor:pointer;opacity:.3;font-size:16px;transition:opacity .2s;padding:2px;line-height:1}
+  .pin-btn:hover{opacity:.8}
+  .pin-btn.pinned{opacity:1;filter:drop-shadow(0 0 4px var(--amber))}
+  .pg{position:relative}
+  .pg.pinned-card{border-color:var(--amber)!important;border-width:2px!important}
   ::-webkit-scrollbar{width:5px;height:5px}
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
@@ -233,6 +238,24 @@ window.addEventListener('resize',applyT);
   fetch('/api/client-ip').then(r=>r.json()).then(d=>{if(d.ip)document.getElementById('mIp').textContent=d.ip;}).catch(()=>{});
 })();
 
+// Pins: {produktName: slotIndex} – in localStorage gespeichert
+const PINS = JSON.parse(localStorage.getItem('kds_pins') || '{}');
+function savePins(){ localStorage.setItem('kds_pins', JSON.stringify(PINS)); }
+
+function togglePin(name) {
+  if (PINS[name] !== undefined) {
+    delete PINS[name];
+  } else {
+    // Nächsten freien Slot finden
+    const used = new Set(Object.values(PINS));
+    let slot = 0;
+    while (used.has(slot)) slot++;
+    PINS[name] = slot;
+  }
+  savePins();
+  if (S.view === 'products') rProducts();
+}
+
 async function init(){await Promise.all([loadT(),loadTot()]);connectWS();setInterval(loadT,30000);}
 async function loadT(){S.tickets=await fetch(S.station?'/api/tickets?station='+S.station:'/api/tickets').then(r=>r.json());render();}
 async function loadTot(){S.totals=await fetch(S.station?'/api/totals?station='+S.station:'/api/totals').then(r=>r.json());renderTot();}
@@ -304,11 +327,35 @@ function rProducts(){
   }
 
   const grid=document.createElement('div');grid.className='pv';
-  Object.entries(map).filter(([,rows])=>rows.reduce((s,r)=>s+r.qty,0)>0).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([n,rows])=>{
-    const tot=rows.reduce((s,r)=>s+r.qty,0);
-    const g=document.createElement('div');g.className='pg';
-    // Nur Produktname + Gesamtzahl, keine Tisch-Aufschlüsselung
-    g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+tot+'</div></div>';
+
+  // Produkte mit qty>0
+  const prods=Object.entries(map)
+    .filter(([,rows])=>rows.reduce((s,r)=>s+r.qty,0)>0)
+    .map(([n,rows])=>({n,tot:rows.reduce((s,r)=>s+r.qty,0)}));
+
+  // Gepinnte Slots befüllen
+  const slots=[];
+  prods.forEach(p=>{
+    if(PINS[p.n]!==undefined) slots[PINS[p.n]]=p;
+  });
+  // Ungepinnte alphabetisch in freie Slots einsortieren
+  const unpinned=prods.filter(p=>PINS[p.n]===undefined).sort((a,b)=>a.n.localeCompare(b.n));
+  let ui=0;
+  const total=Math.max(slots.length, prods.length);
+  const result=[];
+  for(let i=0;i<total;i++){
+    if(slots[i]) result.push(slots[i]);
+    else if(ui<unpinned.length) result.push(unpinned[ui++]);
+  }
+  // Restliche ungepinnte anhängen
+  while(ui<unpinned.length) result.push(unpinned[ui++]);
+
+  result.forEach(({n,tot})=>{
+    const isPinned=PINS[n]!==undefined;
+    const g=document.createElement('div');
+    g.className='pg'+(isPinned?' pinned-card':'');
+    g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+tot+'</div></div>'
+      +'<button class="pin-btn'+(isPinned?' pinned':'')+'" onclick="togglePin('+JSON.stringify(n)+')" title="'+(isPinned?'Fixierung aufheben':'Position fixieren')+'">📌</button>';
     grid.appendChild(g);
   });
   wrap.appendChild(grid);

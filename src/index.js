@@ -151,15 +151,25 @@ async function getTickets(env, stationId) {
 
   const { results: tickets } = await env.DB.prepare(query).bind(...params).all();
 
-  // Items für jeden Ticket laden
-  for (const ticket of tickets) {
-    const { results: items } = await env.DB.prepare(
-      'SELECT * FROM ticket_items WHERE ticket_id = ?'
-    ).bind(ticket.id).all();
-    ticket.items     = items.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') }));
-    ticket.wait_mins = Math.floor((Date.now() - new Date(ticket.created_at).getTime()) / 60000);
+  if (!tickets.length) return [];
+
+  // ALLE Items für alle offenen Tickets in EINEM Query (kein N+1 mehr)
+  const ids = tickets.map(t => t.id);
+  const { results: allItems } = await env.DB.prepare(
+    'SELECT * FROM ticket_items WHERE ticket_id IN (' + ids.map(() => '?').join(',') + ')'
+  ).bind(...ids).all();
+
+  const itemsByTicket = {};
+  for (const item of allItems) {
+    if (!itemsByTicket[item.ticket_id]) itemsByTicket[item.ticket_id] = [];
+    itemsByTicket[item.ticket_id].push({ ...item, extras: JSON.parse(item.extras || '[]') });
   }
 
+  const now = Date.now();
+  for (const ticket of tickets) {
+    ticket.items     = itemsByTicket[ticket.id] || [];
+    ticket.wait_mins = Math.floor((now - new Date(ticket.created_at).getTime()) / 60000);
+  }
   return tickets;
 }
 
