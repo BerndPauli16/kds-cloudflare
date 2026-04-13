@@ -168,7 +168,15 @@ function parseTicket(lines) {
     }
   }
 
-  return { items, tableNumber, ticketNumber, datum, uhrzeit };
+  // Erste sinnvolle Textzeile = Absender (z.B. "KELLNER MAX", "KASSE 1", "TO GO")
+  const senderName = lines.find(l =>
+    l.length > 2 &&
+    !/^[-─═=\s]{2,}$/.test(l) &&
+    !/ARTIKEL|MENGE|GESAMT|DATUM|UHRZEIT|VIELEN|DANK/i.test(l) &&
+    !/^\d/.test(l)
+  ) || null;
+
+  return { items, tableNumber, ticketNumber, datum, uhrzeit, senderName };
 }
 
 // ════════════════════════════════════════════════
