@@ -128,7 +128,7 @@ export function getHTML() {
   .pg{background:var(--sur);border:1px solid var(--brd);border-radius:10px;overflow:hidden;animation:sIn .25s ease;display:flex;flex-direction:column}
   .pgh{padding:28px 16px 14px;background:var(--sur2);display:flex;justify-content:space-between;align-items:flex-start;gap:8px;border-radius:10px}
   .pgn{font-size:22px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--txt);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .pgt{font-family:var(--mono);font-size:56px;font-weight:700;color:var(--amber);line-height:1;flex-shrink:0;align-self:flex-start;margin-top:-14px}
+  .pgt{font-family:var(--mono);font-size:56px;font-weight:700;color:var(--amber);line-height:1;position:absolute;top:4px;right:10px}
   .prs{padding:4px 0;flex:1}
   .pr{display:grid;grid-template-columns:1fr 50px;align-items:center;padding:7px 16px;border-bottom:1px solid var(--brd)}
   .pr:last-child{border-bottom:none}
