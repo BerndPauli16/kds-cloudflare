@@ -149,7 +149,7 @@ export function getHTML() {
   .pg{position:relative}
   .pg.pinned-card{border-width:2px!important}
   .pg.zero{opacity:.45}
-  .move-btn{position:absolute;bottom:6px;background:rgba(0,0,0,.25);border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;padding:3px 8px;border-radius:4px;transition:all .15s;z-index:2}
+  .move-btn{position:absolute;bottom:6px;background:rgba(0,0,0,.25);border:none;color:rgba(255,255,255,.7);font-size:7px;cursor:pointer;padding:2px 5px;border-radius:3px;transition:all .15s;z-index:2;width:22px;text-align:center}
   .move-btn:hover{background:rgba(0,0,0,.5);color:#fff}
   .move-btn.left{left:6px}
   .move-btn.right{right:6px}
