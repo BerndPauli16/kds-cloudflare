@@ -231,17 +231,34 @@ async function partialPrintTicket(env, ticketId, selectedItems) {
   }
 
   // Print-Job anlegen
-  // Alle Original-Artikel laden für "VON"-Sektion
-  const { results: allItems } = await env.DB.prepare(
+  // 1. Erst Mengen reduzieren
+  for (const sel of selectedItems) {
+    const existing = await env.DB.prepare(
+      'SELECT id, quantity FROM ticket_items WHERE ticket_id = ? AND product_name = ?'
+    ).bind(ticketId, sel.product_name).first();
+
+    if (!existing) continue;
+    const newQty = existing.quantity - sel.quantity;
+
+    if (newQty <= 0) {
+      await env.DB.prepare('DELETE FROM ticket_items WHERE id = ?').bind(existing.id).run();
+    } else {
+      await env.DB.prepare('UPDATE ticket_items SET quantity = ? WHERE id = ?').bind(newQty, existing.id).run();
+    }
+  }
+
+  // 2. Verbleibende Artikel nach Reduzierung laden (= aktueller Restbestand)
+  const { results: remaining } = await env.DB.prepare(
     'SELECT * FROM ticket_items WHERE ticket_id = ?'
   ).bind(ticketId).all();
 
+  // 3. Print-Job mit aktuellem Restbestand als "EIN TEIL VON"
   const payload = JSON.stringify({
     ticket_number: ticket.ticket_number,
     table_number:  ticket.table_number,
     station_name:  ticket.station_name,
     items:         selectedItems,
-    all_items:     allItems.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') })),
+    all_items:     remaining.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') })),
     partial:       true,
     printed_at:    new Date().toISOString(),
   });
@@ -249,38 +266,9 @@ async function partialPrintTicket(env, ticketId, selectedItems) {
     'INSERT INTO print_jobs (ticket_id, payload) VALUES (?, ?)'
   ).bind(ticketId, payload).run();
 
-  // Mengen im Bon reduzieren
-  for (const sel of selectedItems) {
-    const existing = await env.DB.prepare(
-      'SELECT id, quantity FROM ticket_items WHERE ticket_id = ? AND product_name = ?'
-    ).bind(ticketId, sel.product_name).first();
-
-    if (!existing) continue;
-
-    const newQty = existing.quantity - sel.quantity;
-
-    if (newQty <= 0) {
-      // Artikel komplett entfernen
-      await env.DB.prepare(
-        'DELETE FROM ticket_items WHERE id = ?'
-      ).bind(existing.id).run();
-    } else {
-      // Menge reduzieren
-      await env.DB.prepare(
-        'UPDATE ticket_items SET quantity = ? WHERE id = ?'
-      ).bind(newQty, existing.id).run();
-    }
-  }
-
-  // Prüfen ob noch Artikel übrig — wenn nicht, Bon schließen
-  const { results: remaining } = await env.DB.prepare(
-    'SELECT id FROM ticket_items WHERE ticket_id = ?'
-  ).bind(ticketId).all();
-
+  // 4. Bon schließen wenn nichts mehr übrig
   if (remaining.length === 0) {
-    await env.DB.prepare(
-      "UPDATE tickets SET status = 'done' WHERE id = ?"
-    ).bind(ticketId).run();
+    await env.DB.prepare("UPDATE tickets SET status = 'done' WHERE id = ?").bind(ticketId).run();
   }
 
   return { ...ticket, partial: true };
