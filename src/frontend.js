@@ -94,7 +94,7 @@ export function getHTML() {
 
   .tc-head{padding:10px 14px;background:var(--sur2);display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--brd)}
   .tc-num{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--amber)}
-  .tc-tbl{font-size:17px;font-weight:700;color:var(--txt)}
+  .tc-tbl{font-size:34px;font-weight:700;color:var(--txt)}
   .tc-wait{font-size:13px;font-weight:600;padding:3px 9px;border-radius:5px;background:var(--bg);border:1px solid var(--brd);color:var(--muted)}
   .tc-wait.urg{color:var(--red);border-color:var(--red)} .tc-wait.wrn{color:var(--amber);border-color:var(--adim)}
 
