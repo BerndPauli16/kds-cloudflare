@@ -3,6 +3,7 @@
 // ════════════════════════════════════════════════
 import { KDSRoom }    from './kds-room.js';
 import { getHTML }    from './frontend.js';
+import { getPrinterHTML } from './printer.js';
 
 export { KDSRoom };
 
