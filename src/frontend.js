@@ -123,11 +123,11 @@ export function getHTML() {
   .pv-header{padding:14px 16px 10px;border-bottom:2px solid var(--amber);display:flex;align-items:baseline;gap:10px;flex-shrink:0}
   .pv-bons-num{font-family:var(--mono);font-size:42px;font-weight:700;color:var(--amber);line-height:1}
   .pv-bons-lbl{font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt)}
-  .pv{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;padding:14px;align-content:start;overflow-y:auto;flex:1}
+  .pv{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;padding:14px;align-content:start;overflow-y:auto;flex:1}
   .pg{background:var(--sur);border:1px solid var(--brd);border-radius:10px;overflow:hidden;animation:sIn .25s ease;display:flex;flex-direction:column}
-  .pgh{padding:14px 16px 8px;background:var(--sur2);border-bottom:1px solid var(--brd);display:flex;justify-content:space-between;align-items:center;gap:8px}
-  .pgn{font-size:19px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--txt);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .pgt{font-family:var(--mono);font-size:38px;font-weight:700;color:var(--amber);line-height:1;flex-shrink:0}
+  .pgh{padding:20px 20px;background:var(--sur2);display:flex;justify-content:space-between;align-items:center;gap:8px;border-radius:10px}
+  .pgn{font-size:22px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--txt);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pgt{font-family:var(--mono);font-size:48px;font-weight:700;color:var(--amber);line-height:1;flex-shrink:0}
   .prs{padding:4px 0;flex:1}
   .pr{display:grid;grid-template-columns:1fr 50px;align-items:center;padding:7px 16px;border-bottom:1px solid var(--brd)}
   .pr:last-child{border-bottom:none}
@@ -136,6 +136,8 @@ export function getHTML() {
   .s-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.8px}
 
   .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:14px;color:var(--muted)}
+  #main.products-view{grid-template-columns:1fr}
+  #main.products-view aside{display:none}
   .empty-i{font-size:52px} .empty-t{font-size:19px;font-weight:600;letter-spacing:.8px}
 
   ::-webkit-scrollbar{width:5px;height:5px}
@@ -245,7 +247,13 @@ function connectWS(){
   ws.onmessage=async({data})=>{const m=JSON.parse(data);if(m.type==='pong')return;await Promise.all([loadT(),loadTot()]);};
 }
 
-function sv(v){S.view=v;document.getElementById('tO').classList.toggle('active',v==='orders');document.getElementById('tP').classList.toggle('active',v==='products');render();}
+function sv(v){
+  S.view=v;
+  document.getElementById('tO').classList.toggle('active',v==='orders');
+  document.getElementById('tP').classList.toggle('active',v==='products');
+  document.getElementById('main').classList.toggle('products-view',v==='products');
+  render();
+}
 function render(){S.view==='orders'?rOrders():rProducts();}
 
 function rOrders(){
@@ -291,10 +299,11 @@ function rProducts(){
   }
 
   const grid=document.createElement('div');grid.className='pv';
-  Object.entries(map).sort((a,b)=>b[1].reduce((s,r)=>s+r.qty,0)-a[1].reduce((s,r)=>s+r.qty,0)).forEach(([n,rows])=>{
+  Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([n,rows])=>{
     const tot=rows.reduce((s,r)=>s+r.qty,0);
     const g=document.createElement('div');g.className='pg';
-    g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+tot+'</div></div><div class="prs">'+rows.map(r=>'<div class="pr"><div class="pr-tbl">Tisch '+(r.table||'–')+'</div><div class="pr-qty">'+r.qty+'×</div></div>').join('')+'</div>';
+    // Nur Produktname + Gesamtzahl, keine Tisch-Aufschlüsselung
+    g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+tot+'</div></div>';
     grid.appendChild(g);
   });
   wrap.appendChild(grid);
