@@ -443,12 +443,23 @@ function renderTot(){
     return b.total-a.total;
   });
 
-  list.innerHTML=sorted.map(t=>{
-    const pin=PINS[t.product_name];
-    const col=pin&&pin.color?pin.color:null;
-    const bg=col?'background:'+col+'33;border-left:3px solid '+col+';':'';
-    return '<div class="tot-row" style="'+bg+'"><span class="tot-name">'+t.product_name+'</span><span class="tot-num'+(prev[t.product_name]!==t.total?' up':'')+'" style="'+(col?'color:'+col+';':'')+'>'+t.total+'</span></div>';
-  }).join('')||'<div style="padding:14px;color:var(--muted);font-size:15px">Keine offenen Bons</div>';
+  list.innerHTML='';
+  if(!sorted.length){
+    list.innerHTML='<div style="padding:14px;color:var(--muted);font-size:15px">Keine offenen Bons</div>';
+  } else {
+    sorted.forEach(t=>{
+      const pin=PINS[t.product_name];
+      const col=pin&&pin.color?pin.color:null;
+      const row=document.createElement('div');
+      row.className='tot-row';
+      if(col) row.style.cssText='background:'+col+'33;border-left:3px solid '+col;
+      const nm=document.createElement('span');nm.className='tot-name';nm.textContent=t.product_name;
+      const nv=document.createElement('span');nv.className='tot-num'+(prev[t.product_name]!==t.total?' up':'');
+      if(col) nv.style.color=col;
+      nv.textContent=t.total;
+      row.appendChild(nm);row.appendChild(nv);list.appendChild(row);
+    });
+  }
   document.getElementById('totBons').textContent=S.tickets.length;
   S.prev=next;
 }
