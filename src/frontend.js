@@ -336,9 +336,28 @@ function rOrders(){
   const ta=document.getElementById('tickets');
   if(!S.tickets.length){ta.innerHTML='<div class="empty"><div class="empty-i">✓</div><div class="empty-t">Keine offenen Bons</div></div>';return;}
   const g=document.createElement('div');g.className='og';
-  S.tickets.forEach(t=>{
+
+  // Tickets nach Pin-Priorität sortieren
+  const sorted=[...S.tickets].sort((a,b)=>{
+    const pa=Math.min(...a.items.map(i=>PINS[i.product_name]?PINS[i.product_name].slot:9999));
+    const pb=Math.min(...b.items.map(i=>PINS[i.product_name]?PINS[i.product_name].slot:9999));
+    if(pa!==pb) return pa-pb;
+    return new Date(a.created_at)-new Date(b.created_at);
+  });
+
+  sorted.forEach(t=>{
     const urg=t.wait_mins>=15?'urg':(t.wait_mins>=8?'wrn':'');
-    const card=document.createElement('div');card.className='tc'+(t.status==='printing'?' printing':'');card.id='card-'+t.id;
+    // Pin-Farbe: höchstpriorisiertes gepinntes Produkt im Bon
+    const pinMatch=t.items.map(i=>PINS[i.product_name]).filter(Boolean).sort((a,b)=>a.slot-b.slot)[0];
+    const pinColor=pinMatch&&pinMatch.color?pinMatch.color:null;
+    const card=document.createElement('div');
+    card.className='tc'+(t.status==='printing'?' printing':'');
+    card.id='card-'+t.id;
+    if(pinColor){
+      card.style.background=pinColor+'22';
+      card.style.borderColor=pinColor;
+      card.style.borderWidth='2px';
+    }
     const itemsHtml=t.items.map((i,idx)=>{
       const k=t.id+'-'+idx; const sq=S.sel[k]||0;
       const done=i.quantity<=0;
