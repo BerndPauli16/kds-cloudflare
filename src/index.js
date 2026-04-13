@@ -179,12 +179,6 @@ async function createTicket(env, body) {
     ).bind(ticketId, item.product_name, item.quantity, JSON.stringify(item.extras || [])).run();
   }
 
-  // Print-Job erstellen
-  const payload = JSON.stringify({ ticket_number, table_number, items });
-  await env.DB.prepare(
-    'INSERT INTO print_jobs (ticket_id, payload) VALUES (?, ?)'
-  ).bind(ticketId, payload).run();
-
   return { id: ticketId, ticket_number, table_number, station_id, items };
 }
 
