@@ -355,7 +355,8 @@ function rProducts(){
     const g=document.createElement('div');
     g.className='pg'+(isPinned?' pinned-card':'');
     g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+tot+'</div></div>'
-      +'<button class="pin-btn'+(isPinned?' pinned':'')+'" onclick="togglePin('+JSON.stringify(n)+')" title="'+(isPinned?'Fixierung aufheben':'Position fixieren')+'">📌</button>';
+      +'<button class="pin-btn'+(isPinned?' pinned':'')+'">📌</button>';
+    g.querySelector('.pin-btn').addEventListener('click',e=>{e.stopPropagation();togglePin(n);});
     grid.appendChild(g);
   });
   wrap.appendChild(grid);
