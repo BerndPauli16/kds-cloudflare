@@ -149,6 +149,10 @@ export function getHTML() {
   .pg{position:relative}
   .pg.pinned-card{border-width:2px!important}
   .pg.zero{opacity:.45}
+  .move-btn{position:absolute;bottom:6px;background:rgba(0,0,0,.25);border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;padding:3px 8px;border-radius:4px;transition:all .15s;z-index:2}
+  .move-btn:hover{background:rgba(0,0,0,.5);color:#fff}
+  .move-btn.left{left:6px}
+  .move-btn.right{right:6px}
   ::-webkit-scrollbar{width:5px;height:5px}
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
@@ -246,6 +250,20 @@ window.addEventListener('resize',applyT);
 const PINS = JSON.parse(localStorage.getItem('kds_pins') || '{}');
 function savePins(){ localStorage.setItem('kds_pins', JSON.stringify(PINS)); }
 
+function movePin(name, dir) {
+  if (!PINS[name]) return;
+  const sorted = Object.entries(PINS).sort((a,b)=>a[1].slot-b[1].slot);
+  const idx = sorted.findIndex(([n])=>n===name);
+  const swapIdx = idx + dir;
+  if (swapIdx < 0 || swapIdx >= sorted.length) return;
+  // Slots tauschen
+  const tmp = sorted[idx][1].slot;
+  PINS[sorted[idx][0]].slot = PINS[sorted[swapIdx][0]].slot;
+  PINS[sorted[swapIdx][0]].slot = tmp;
+  savePins();
+  if (S.view === 'products') rProducts();
+}
+
 function togglePin(name) {
   if (PINS[name]) {
     delete PINS[name];
@@ -271,13 +289,17 @@ function setPinColor(name, color) {
 
 function applyPinColor(card, color) {
   if (color) {
-    card.style.background = color + '22';
+    card.style.background = color + '33';  // voller Hintergrund, leicht transparent
     card.style.borderColor = color;
     const btn = card.querySelector('.color-btn');
     if (btn) btn.style.background = color;
+    const pgh = card.querySelector('.pgh');
+    if (pgh) pgh.style.background = color + '55';  // Kopf etwas dunkler
   } else {
     card.style.background = '';
     card.style.borderColor = '';
+    const pgh = card.querySelector('.pgh');
+    if (pgh) pgh.style.background = '';
   }
 }
 
@@ -378,9 +400,12 @@ function rProducts(){
     const g=document.createElement('div');
     g.className='pg'+(isPinned?' pinned-card':'')+(isZero?' zero':'');
     g.dataset.prod=n;
+    const pinnedCount=Object.keys(PINS).length;
+    const mySlot=pin?pin.slot:null;
     g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+(isZero?'0':tot)+'</div></div>'
       +(isPinned?'<button class="color-btn" title="Farbe wählen" style="background:'+(color||'#888')+'"></button><input type="color" class="color-inp" value="'+(color||'#f59e0b')+'">':'')
-      +'<button class="pin-btn'+(isPinned?' pinned':'')+'">📌</button>';
+      +'<button class="pin-btn'+(isPinned?' pinned':'')+'">📌</button>'
+      +(isPinned?'<button class="move-btn left">◀</button><button class="move-btn right">▶</button>':'');
     if (isPinned) applyPinColor(g, color);
     g.querySelector('.pin-btn').addEventListener('click',e=>{e.stopPropagation();togglePin(n);});
     if(isPinned){
@@ -388,6 +413,8 @@ function rProducts(){
       const cb=g.querySelector('.color-btn');
       cb.addEventListener('click',e=>{e.stopPropagation();ci.click();});
       ci.addEventListener('input',e=>{e.stopPropagation();setPinColor(n,e.target.value);});
+      g.querySelector('.move-btn.left').addEventListener('click',e=>{e.stopPropagation();movePin(n,-1);});
+      g.querySelector('.move-btn.right').addEventListener('click',e=>{e.stopPropagation();movePin(n,1);});
     }
     grid.appendChild(g);
   });
