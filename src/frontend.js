@@ -140,11 +140,15 @@ export function getHTML() {
   #main.products-view aside{display:none}
   .empty-i{font-size:52px} .empty-t{font-size:19px;font-weight:600;letter-spacing:.8px}
 
-  .pin-btn{position:absolute;top:8px;right:8px;background:transparent;border:none;cursor:pointer;opacity:.3;font-size:16px;transition:opacity .2s;padding:2px;line-height:1}
-  .pin-btn:hover{opacity:.8}
-  .pin-btn.pinned{opacity:1;filter:drop-shadow(0 0 4px var(--amber))}
+  .pin-btn{position:absolute;top:6px;right:6px;background:transparent;border:none;cursor:pointer;opacity:.25;font-size:15px;transition:opacity .2s;padding:2px;line-height:1;z-index:2}
+  .pin-btn:hover{opacity:.9}
+  .pin-btn.pinned{opacity:1}
+  .color-btn{position:absolute;top:6px;right:30px;width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.3);cursor:pointer;z-index:2;transition:transform .15s}
+  .color-btn:hover{transform:scale(1.2)}
+  .color-inp{position:absolute;opacity:0;width:0;height:0}
   .pg{position:relative}
-  .pg.pinned-card{border-color:var(--amber)!important;border-width:2px!important}
+  .pg.pinned-card{border-width:2px!important}
+  .pg.zero{opacity:.45}
   ::-webkit-scrollbar{width:5px;height:5px}
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
@@ -238,22 +242,43 @@ window.addEventListener('resize',applyT);
   fetch('/api/client-ip').then(r=>r.json()).then(d=>{if(d.ip)document.getElementById('mIp').textContent=d.ip;}).catch(()=>{});
 })();
 
-// Pins: {produktName: slotIndex} – in localStorage gespeichert
+// Pins: {name: {slot, color}} – localStorage
 const PINS = JSON.parse(localStorage.getItem('kds_pins') || '{}');
 function savePins(){ localStorage.setItem('kds_pins', JSON.stringify(PINS)); }
 
 function togglePin(name) {
-  if (PINS[name] !== undefined) {
+  if (PINS[name]) {
     delete PINS[name];
   } else {
-    // Nächsten freien Slot finden
-    const used = new Set(Object.values(PINS));
+    // Nächsten freien Slot am Anfang
+    const used = new Set(Object.values(PINS).map(p=>p.slot));
     let slot = 0;
     while (used.has(slot)) slot++;
-    PINS[name] = slot;
+    PINS[name] = { slot, color: null };
   }
   savePins();
   if (S.view === 'products') rProducts();
+}
+
+function setPinColor(name, color) {
+  if (!PINS[name]) return;
+  PINS[name].color = color;
+  savePins();
+  // Nur dieses Kartenbackground updaten
+  const card = document.querySelector('[data-prod="'+name.replace(/"/g,'&quot;')+'"]');
+  if (card) applyPinColor(card, color);
+}
+
+function applyPinColor(card, color) {
+  if (color) {
+    card.style.background = color + '22';
+    card.style.borderColor = color;
+    const btn = card.querySelector('.color-btn');
+    if (btn) btn.style.background = color;
+  } else {
+    card.style.background = '';
+    card.style.borderColor = '';
+  }
 }
 
 async function init(){await Promise.all([loadT(),loadTot()]);connectWS();setInterval(loadT,30000);}
@@ -333,30 +358,37 @@ function rProducts(){
     .filter(([,rows])=>rows.reduce((s,r)=>s+r.qty,0)>0)
     .map(([n,rows])=>({n,tot:rows.reduce((s,r)=>s+r.qty,0)}));
 
-  // Gepinnte Slots befüllen
-  const slots=[];
-  prods.forEach(p=>{
-    if(PINS[p.n]!==undefined) slots[PINS[p.n]]=p;
-  });
-  // Ungepinnte alphabetisch in freie Slots einsortieren
-  const unpinned=prods.filter(p=>PINS[p.n]===undefined).sort((a,b)=>a.n.localeCompare(b.n));
-  let ui=0;
-  const total=Math.max(slots.length, prods.length);
-  const result=[];
-  for(let i=0;i<total;i++){
-    if(slots[i]) result.push(slots[i]);
-    else if(ui<unpinned.length) result.push(unpinned[ui++]);
-  }
-  // Restliche ungepinnte anhängen
-  while(ui<unpinned.length) result.push(unpinned[ui++]);
+  // Gepinnte: auch wenn qty=0 anzeigen (mit zero-Klasse)
+  const pinnedNames=Object.keys(PINS);
+  const pinnedItems=pinnedNames.map(n=>({
+    n, tot:map[n]?map[n].reduce((s,r)=>s+r.qty,0):0
+  })).sort((a,b)=>PINS[a.n].slot-PINS[b.n].slot);
+
+  // Ungepinnte: nur qty>0, alphabetisch
+  const unpinned=prods.filter(p=>!PINS[p.n]).sort((a,b)=>a.n.localeCompare(b.n));
+
+  // Gepinnte zuerst, dann Ungepinnte
+  const result=[...pinnedItems,...unpinned];
 
   result.forEach(({n,tot})=>{
-    const isPinned=PINS[n]!==undefined;
+    const pin=PINS[n];
+    const isPinned=!!pin;
+    const isZero=tot<=0;
+    const color=pin&&pin.color?pin.color:null;
     const g=document.createElement('div');
-    g.className='pg'+(isPinned?' pinned-card':'');
-    g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+tot+'</div></div>'
+    g.className='pg'+(isPinned?' pinned-card':'')+(isZero?' zero':'');
+    g.dataset.prod=n;
+    g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+(isZero?'0':tot)+'</div></div>'
+      +(isPinned?'<button class="color-btn" title="Farbe wählen" style="background:'+(color||'#888')+'"></button><input type="color" class="color-inp" value="'+(color||'#f59e0b')+'">':'')
       +'<button class="pin-btn'+(isPinned?' pinned':'')+'">📌</button>';
+    if (isPinned) applyPinColor(g, color);
     g.querySelector('.pin-btn').addEventListener('click',e=>{e.stopPropagation();togglePin(n);});
+    if(isPinned){
+      const ci=g.querySelector('.color-inp');
+      const cb=g.querySelector('.color-btn');
+      cb.addEventListener('click',e=>{e.stopPropagation();ci.click();});
+      ci.addEventListener('input',e=>{e.stopPropagation();setPinColor(n,e.target.value);});
+    }
     grid.appendChild(g);
   });
   wrap.appendChild(grid);
