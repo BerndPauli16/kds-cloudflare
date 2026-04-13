@@ -166,9 +166,10 @@ async function getTickets(env, stationId) {
 async function createTicket(env, body) {
   const { ticket_number, table_number, station_id, items } = body;
 
+  const originalItemsJson = JSON.stringify(items || []);
   const { meta } = await env.DB.prepare(
-    'INSERT INTO tickets (ticket_number, table_number, station_id) VALUES (?, ?, ?)'
-  ).bind(ticket_number, table_number, station_id).run();
+    'INSERT INTO tickets (ticket_number, table_number, station_id, original_items) VALUES (?, ?, ?, ?)'
+  ).bind(ticket_number, table_number, station_id, originalItemsJson).run();
 
   const ticketId = meta.last_row_id;
 
@@ -241,18 +242,25 @@ async function partialPrintTicket(env, ticketId, selectedItems) {
     }
   }
 
-  // 2. Verbleibende Artikel nach Reduzierung laden (= aktueller Restbestand)
-  const { results: remaining } = await env.DB.prepare(
-    'SELECT * FROM ticket_items WHERE ticket_id = ?'
-  ).bind(ticketId).all();
+  // 2. Original-Bestellung aus Ticket laden (bleibt immer gleich bis Bon weg ist)
+  const originalItems = JSON.parse(ticket.original_items || '[]');
 
-  // 3. Print-Job mit aktuellem Restbestand als "EIN TEIL VON"
+  // Fallback: falls original_items noch nicht gesetzt, aktuelle Items nehmen
+  let allItemsForVon = originalItems;
+  if (!allItemsForVon.length) {
+    const { results: cur } = await env.DB.prepare(
+      'SELECT * FROM ticket_items WHERE ticket_id = ?'
+    ).bind(ticketId).all();
+    allItemsForVon = cur.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') }));
+  }
+
+  // 3. Print-Job mit Original-Bestellung als "EIN TEIL VON"
   const payload = JSON.stringify({
     ticket_number: ticket.ticket_number,
     table_number:  ticket.table_number,
     station_name:  ticket.station_name,
     items:         selectedItems,
-    all_items:     remaining.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') })),
+    all_items:     allItemsForVon,
     partial:       true,
     printed_at:    new Date().toISOString(),
   });
