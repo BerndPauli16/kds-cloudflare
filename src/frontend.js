@@ -402,7 +402,7 @@ function rProducts(){
     g.dataset.prod=n;
     const pinnedCount=Object.keys(PINS).length;
     const mySlot=pin?pin.slot:null;
-    g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+(isZero?'0':tot)+'</div></div>'
+    g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+(isZero?'':Math.round(tot))+'</div></div>'
       +(isPinned?'<button class="color-btn" title="Farbe wählen" style="background:'+(color||'#888')+'"></button><input type="color" class="color-inp" value="'+(color||'#f59e0b')+'">':'')
       +'<button class="pin-btn'+(isPinned?' pinned':'')+'">📌</button>'
       +(isPinned?'<button class="move-btn left">◀</button><button class="move-btn right">▶</button>':'');
