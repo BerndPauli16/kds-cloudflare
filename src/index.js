@@ -204,6 +204,7 @@ async function printTicket(env, ticketId) {
     table_number:  ticket.table_number,
     station_name:  ticket.station_name,
     items:         items.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') })),
+    created_at:    ticket.created_at,
     // Wenn vorher Teildrucke: DER REST VON + Originalbon anzeigen
     all_items:     hadPartialPrints ? originalItems : null,
     is_last:       hadPartialPrints,
@@ -277,6 +278,7 @@ async function partialPrintTicket(env, ticketId, selectedItems) {
     all_items:     allItemsForVon,
     partial:       true,
     is_last:       isLastPartial,
+    created_at:    ticket.created_at,
     printed_at:    new Date().toISOString(),
   });
   await env.DB.prepare(

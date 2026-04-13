@@ -259,7 +259,8 @@ function buildTicketBuffer(p) {
   txt(`Tisch: ${p.table_number || '–'}`);
   parts.push(escBuf(ESC, 0x45, 0x00));     // Bold OFF
   txt(`Bon:   #${p.ticket_number}`);
-  const time = new Date(p.printed_at || Date.now());
+  const orderTime = new Date(p.created_at || p.printed_at || Date.now());
+  const printTime = new Date(p.printed_at || Date.now());
   txt(`Zeit:  ${time.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' })}`);
   line();
 
