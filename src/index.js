@@ -46,7 +46,7 @@ export default {
 // ════════════════════════════════════════════════
 async function handleAPI(request, env, url, method) {
   const path = url.pathname.replace('/api', '');
-  try {��
+  try {
     // ── Teildruck ────────────────────────────────────────────
     const partialMatch = path.match(/^\/tickets\/(\d+)\/partial-print$/);
     if (partialMatch && method === 'POST') {
