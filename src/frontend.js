@@ -256,14 +256,13 @@ function rOrders(){
     const urg=t.wait_mins>=15?'urg':(t.wait_mins>=8?'wrn':'');
     const card=document.createElement('div');card.className='tc'+(t.status==='printing'?' printing':'');card.id='card-'+t.id;
     const itemsHtml=t.items.map((i,idx)=>{
-      const sk=t.id+'-'+idx;const sq=S.sel[sk]||0;
-      const isDone=i.quantity<=0;
-      const selCls=sq>0?' sel':(isDone?' done':'');
+      const k=t.id+'-'+idx; const sq=S.sel[k]||0;
+      const done=i.quantity<=0;
+      const cls='t-item'+(done?' done':sq>0?' sel':'');
       const badge=sq>0?'<span class="sel-badge">'+sq+'</span>':'';
       const extras=i.extras&&i.extras.length?'<div class="t-extras">'+i.extras.map(e=>'<span class="t-extra">'+e+'</span>').join('')+'</div>':'';
-      const isDone2=i.quantity<=0;
-      const selCls2=sq>0?' sel':(isDone2?' done':'');
-      return '<div class="t-item'+selCls2+'"'+(isDone2?'':' onclick="selItem('+t.id+','+idx+','+i.quantity+')"><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
+      const click=done?'':' onclick="selItem('+t.id+','+idx+','+i.quantity+')"';
+      return '<div class="'+cls+'"'+click+'><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
     }).join('');
     const hasSel=t.items.some((_,idx)=>(S.sel[t.id+'-'+idx]||0)>0);
     card.innerHTML='<div class="tc-head"><div><div class="tc-num">#'+t.ticket_number+'</div><div class="tc-tbl">Tisch '+(t.table_number||'–')+'</div></div><div style="display:flex;align-items:center;gap:6px"><span class="tc-wait '+urg+'">'+t.wait_mins+'min</span>'+(t.station_color?'<span class="s-badge" style="background:'+t.station_color+'22;color:'+t.station_color+';border:1px solid '+t.station_color+'44">'+t.station_name+'</span>':'')+'</div></div><div class="tc-items">'+itemsHtml+'</div><div class="tc-foot"><button class="btn-p" onclick="prt('+t.id+')" '+(t.status==='printing'?'disabled':'')+'>🖨 '+(t.status==='printing'?'Druckt…':'Drucken')+'</button><button class="btn-partial" id="bp-'+t.id+'" onclick="partPrt('+t.id+')" '+(hasSel?'':'disabled')+'>✂ Teildruck</button></div>';
@@ -320,11 +319,13 @@ function selItem(tid,idx,maxQty){
   const card=document.getElementById('card-'+tid);if(!card)return;
   const itemsDiv=card.querySelector('.tc-items');
   itemsDiv.innerHTML=t.items.map((i,i2)=>{
-    const sk=tid+'-'+i2;const sq=S.sel[sk]||0;
-    const selCls=sq>0?' sel':'';
+    const sk=tid+'-'+i2; const sq=S.sel[sk]||0;
+    const done=i.quantity<=0;
+    const cls='t-item'+(done?' done':sq>0?' sel':'');
     const badge=sq>0?'<span class="sel-badge">'+sq+'</span>':'';
     const extras=i.extras&&i.extras.length?'<div class="t-extras">'+i.extras.map(e=>'<span class="t-extra">'+e+'</span>').join('')+'</div>':'';
-    return '<div class="t-item'+selCls+'"'+(isDone?'':' onclick="selItem('+tid+','+i2+','+i.quantity+')"><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
+    const click=done?'':' onclick="selItem('+tid+','+i2+','+i.quantity+')"';
+    return '<div class="'+cls+'"'+click+'><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
   }).join('');
   const hasSel=t.items.some((_,i2)=>(S.sel[tid+'-'+i2]||0)>0);
   const bp=document.getElementById('bp-'+tid);if(bp)bp.disabled=!hasSel;
@@ -349,7 +350,8 @@ async function prt(id){
   await fetch('/api/tickets/'+id+'/done',{method:'POST'});
   await Promise.all([loadT(),loadTot()]);
 }
-async function don(id){await fetch('/api/tickets/'+id+'/done', {method:'POST'});await Promise.all([loadT(),loadTot()]);}
+
+async function don(id){await fetch('/api/tickets/'+id+'/done',{method:'POST'});await Promise.all([loadT(),loadTot()]);}
 
 init();
 </script>
