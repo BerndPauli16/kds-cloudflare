@@ -113,11 +113,15 @@ function renderJob(job){
   rows+=center('Gedruckt: '+ts);
 
   const div=document.createElement('div');
+  div.className='receipt-wrap';
   div.innerHTML='<div class="receipt"><div class="r-tape"><span class="r-id">Job #'+job.id+' · '+ts+'</span><span class="r-badge '+(isP?'part':'full')+'">'+(isP?'TEILDRUCK':'VOLLSTÄNDIG')+'</span></div><div class="r-body">'+rows+'</div></div><div class="r-cut"></div>';
 
   const feed=document.getElementById('feed');
   if(feed.querySelector('.empty')) feed.innerHTML='';
   feed.insertBefore(div,feed.firstChild);
+  // Max 3 Bons sichtbar — ältester verschwindet
+  const all=feed.querySelectorAll('.receipt-wrap');
+  if(all.length>3) all[all.length-1].remove();
 }
 
 async function poll(){
