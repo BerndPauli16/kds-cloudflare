@@ -7,7 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "kds-db"
-database_id = "DEINE_D1_DATABASE_ID"   # ← nach `wrangler d1 create kds-db` eintragen
+database_id = "b76c3d0e-43ec-42cb-9a63-bd3d68c92b15"   # ← nach `wrangler d1 create kds-db` eintragen
 
 # ─── R2 Objekt-Speicher ─────────────────────────────────────
 [[r2_buckets]]
