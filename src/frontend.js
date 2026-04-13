@@ -84,6 +84,7 @@ export function getHTML() {
   .sb-foot strong{font-family:var(--mono);color:var(--txt)}
 
   .ta{overflow-y:auto;padding:14px;order:1}
+  #tickets{overflow-y:auto;height:100%}
 
   @keyframes sIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   .og{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;align-content:start}
