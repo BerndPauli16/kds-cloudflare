@@ -195,11 +195,19 @@ async function printTicket(env, ticketId) {
     'SELECT * FROM ticket_items WHERE ticket_id = ?'
   ).bind(ticketId).all();
 
+  // Prüfen ob vorher schon Teildrucke waren (original_items vorhanden)
+  const originalItems = ticket.original_items ? JSON.parse(ticket.original_items) : null;
+  const hadPartialPrints = originalItems && originalItems.length > 0;
+
   const payload = JSON.stringify({
     ticket_number: ticket.ticket_number,
     table_number:  ticket.table_number,
     station_name:  ticket.station_name,
     items:         items.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') })),
+    // Wenn vorher Teildrucke: DER REST VON + Originalbon anzeigen
+    all_items:     hadPartialPrints ? originalItems : null,
+    is_last:       hadPartialPrints,
+    partial:       hadPartialPrints,
     printed_at:    new Date().toISOString(),
   });
 
@@ -254,7 +262,13 @@ async function partialPrintTicket(env, ticketId, selectedItems) {
     allItemsForVon = cur.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') }));
   }
 
-  // 3. Print-Job mit Original-Bestellung als "EIN TEIL VON"
+  // Prüfen ob das der letzte Teildruck ist (nichts mehr übrig)
+  const { results: afterRemaining } = await env.DB.prepare(
+    'SELECT id FROM ticket_items WHERE ticket_id = ?'
+  ).bind(ticketId).all();
+  const isLastPartial = afterRemaining.length === 0;
+
+  // 3. Print-Job mit Original-Bestellung als "EIN TEIL VON" / "DER REST VON"
   const payload = JSON.stringify({
     ticket_number: ticket.ticket_number,
     table_number:  ticket.table_number,
@@ -262,6 +276,7 @@ async function partialPrintTicket(env, ticketId, selectedItems) {
     items:         selectedItems,
     all_items:     allItemsForVon,
     partial:       true,
+    is_last:       isLastPartial,
     printed_at:    new Date().toISOString(),
   });
   await env.DB.prepare(

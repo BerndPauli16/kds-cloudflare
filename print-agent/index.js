@@ -284,7 +284,7 @@ function buildTicketBuffer(p) {
     parts.push(escBuf(ESC, 0x61, 0x01));   // Zentriert
     parts.push(escBuf(ESC, 0x45, 0x01));   // Bold ON
     parts.push(escBuf(GS,  0x21, 0x11));   // Doppelte Größe
-    txt('EIN TEIL VON');
+    txt(p.is_last ? 'DER REST VON' : 'EIN TEIL VON');
     parts.push(escBuf(GS,  0x21, 0x00));   // Normal
     parts.push(escBuf(ESC, 0x45, 0x00));   // Bold OFF
     parts.push(escBuf(ESC, 0x61, 0x00));   // Links
