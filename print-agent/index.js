@@ -223,3 +223,136 @@ console.log(`Proxy Port : ${CFG.proxyPort}`);
 console.log(`Drucker    : ${CFG.printerIp}:${CFG.printerPort}`);
 console.log(`Worker     : ${CFG.workerUrl || '(nicht konfiguriert)'}`);
 console.log('');
+
+// ════════════════════════════════════════════════
+//  3. JOB POLLER – holt KDS-Druckjobs + druckt
+//  (für Drucken/Teildruck-Button im Monitor)
+// ════════════════════════════════════════════════
+
+// ESC/POS Hilfsfunktionen (raw TCP, kein npm-Paket nötig)
+const ESC = 0x1b;
+const GS  = 0x1d;
+const LF  = 0x0a;
+
+function escBuf(...bytes) { return Buffer.from(bytes); }
+
+function buildTicketBuffer(p) {
+  const parts = [];
+
+  const line  = () => parts.push(Buffer.from('--------------------------------\n'));
+  const br    = () => parts.push(Buffer.from('\n'));
+  const txt   = (s) => parts.push(Buffer.from(s + '\n', 'utf8'));
+
+  // Init + Zeichensatz UTF-8
+  parts.push(escBuf(ESC, 0x40));           // ESC @ – Init
+  parts.push(escBuf(ESC, 0x74, 0x11));     // ESC t 17 – UTF-8 Code Page
+
+  // ── Kopfzeile ────────────────────────────────
+  parts.push(escBuf(ESC, 0x61, 0x01));     // Zentriert
+  parts.push(escBuf(ESC, 0x45, 0x01));     // Bold ON
+  txt(p.station_name || 'BESTELLUNG');
+  parts.push(escBuf(ESC, 0x45, 0x00));     // Bold OFF
+  line();
+
+  parts.push(escBuf(ESC, 0x61, 0x00));     // Links
+  parts.push(escBuf(ESC, 0x45, 0x01));     // Bold ON
+  txt(`Tisch: ${p.table_number || '–'}`);
+  parts.push(escBuf(ESC, 0x45, 0x00));     // Bold OFF
+  txt(`Bon:   #${p.ticket_number}`);
+  const time = new Date(p.printed_at || Date.now());
+  txt(`Zeit:  ${time.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' })}`);
+  line();
+
+  // ── Artikel (jetzt gedruckt) ─────────────────
+  for (const item of (p.items || [])) {
+    parts.push(escBuf(ESC, 0x45, 0x01));   // Bold ON
+    parts.push(escBuf(GS,  0x21, 0x11));   // Doppelte Größe
+    txt(`${String(item.quantity).padStart(2)}x  ${item.product_name}`);
+    parts.push(escBuf(GS,  0x21, 0x00));   // Normal
+    parts.push(escBuf(ESC, 0x45, 0x00));   // Bold OFF
+
+    if (item.extras && item.extras.length) {
+      for (const extra of item.extras) {
+        txt(`      \u2192 ${extra}`);
+      }
+    }
+  }
+
+  // ── VON-Sektion (nur bei Teildruck) ──────────
+  if (p.partial && p.all_items && p.all_items.length > 0) {
+    line();
+    parts.push(escBuf(ESC, 0x61, 0x01));   // Zentriert
+    parts.push(escBuf(ESC, 0x45, 0x01));   // Bold ON
+    parts.push(escBuf(GS,  0x21, 0x11));   // Doppelte Größe
+    txt('EIN TEIL VON');
+    parts.push(escBuf(GS,  0x21, 0x00));   // Normal
+    parts.push(escBuf(ESC, 0x45, 0x00));   // Bold OFF
+    parts.push(escBuf(ESC, 0x61, 0x00));   // Links
+    line();
+
+    for (const item of p.all_items) {
+      txt(`${String(item.quantity).padStart(2)}x  ${item.product_name}`);
+      if (item.extras && item.extras.length) {
+        for (const extra of item.extras) {
+          txt(`      \u2192 ${extra}`);
+        }
+      }
+    }
+  }
+
+  // ── Fußzeile ─────────────────────────────────
+  line();
+  parts.push(escBuf(ESC, 0x61, 0x01));     // Zentriert
+  txt(`Gedruckt: ${time.toLocaleTimeString('de-AT')}`);
+  br(); br(); br();
+  parts.push(escBuf(GS, 0x56, 0x42, 0x00)); // Vollschnitt
+
+  return Buffer.concat(parts);
+}
+
+function sendToPrinter(buf) {
+  return new Promise((resolve, reject) => {
+    const sock = new net.Socket();
+    const timer = setTimeout(() => { sock.destroy(); reject(new Error('Drucker Timeout')); }, 6000);
+
+    sock.connect(CFG.printerPort, CFG.printerIp, () => {
+      sock.write(buf, () => { clearTimeout(timer); sock.end(); resolve(); });
+    });
+    sock.on('error', e => { clearTimeout(timer); reject(e); });
+  });
+}
+
+async function pollJobs() {
+  if (!CFG.workerUrl) return;
+  try {
+    const res  = await fetch(`${CFG.workerUrl}/api/print-jobs/pending`, {
+      headers: { 'X-API-Key': CFG.apiKey },
+    });
+    if (!res.ok) return;
+
+    const jobs = await res.json();
+    for (const job of jobs) {
+      console.log(`[JOB ${job.id}] Drucke #${job.payload.ticket_number}${job.payload.partial ? ' (Teildruck)' : ''}…`);
+      try {
+        await sendToPrinter(buildTicketBuffer(job.payload));
+        await fetch(`${CFG.workerUrl}/api/print-jobs/${job.id}/complete`, {
+          method: 'POST',
+          headers: { 'X-API-Key': CFG.apiKey },
+        });
+        console.log(`[JOB ${job.id}] ✓ Gedruckt`);
+      } catch (e) {
+        console.error(`[JOB ${job.id}] ✗ Fehler:`, e.message);
+      }
+    }
+  } catch (e) {
+    console.error('[POLLER] Fehler:', e.message);
+  }
+}
+
+if (CFG.workerUrl && CFG.apiKey) {
+  console.log(`[POLLER] Startet – alle 3s`);
+  pollJobs();
+  setInterval(pollJobs, 3000);
+} else {
+  console.log('[POLLER] Kein Worker-URL/API-Key – Poller deaktiviert');
+}

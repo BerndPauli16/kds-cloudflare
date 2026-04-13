@@ -230,11 +230,17 @@ async function partialPrintTicket(env, ticketId, selectedItems) {
   }
 
   // Print-Job anlegen
+  // Alle Original-Artikel laden für "VON"-Sektion
+  const { results: allItems } = await env.DB.prepare(
+    'SELECT * FROM ticket_items WHERE ticket_id = ?'
+  ).bind(ticketId).all();
+
   const payload = JSON.stringify({
     ticket_number: ticket.ticket_number,
     table_number:  ticket.table_number,
     station_name:  ticket.station_name,
     items:         selectedItems,
+    all_items:     allItems.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') })),
     partial:       true,
     printed_at:    new Date().toISOString(),
   });
