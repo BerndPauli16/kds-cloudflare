@@ -101,6 +101,12 @@ async function handleAPI(request, env, url, method) {
       return jsonResponse(await getPendingJobs(env));
     }
 
+    // Virtueller Drucker: letzte Jobs anzeigen ohne sie zu konsumieren
+    if (path === '/print-jobs/recent' && method === 'GET') {
+      requireApiKey(request, env);
+      return jsonResponse(await getRecentJobs(env));
+    }
+
     if (path.match(/^\/print-jobs\/\d+\/complete$/) && method === 'POST') {
       requireApiKey(request, env);
       const jobId = parseInt(path.split('/')[2]);
@@ -326,6 +332,13 @@ async function getTotals(env, stationId) {
 
   const { results } = await env.DB.prepare(query).bind(...params).all();
   return results;
+}
+
+async function getRecentJobs(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT pj.*, t.table_number FROM print_jobs pj JOIN tickets t ON pj.ticket_id = t.id ORDER BY pj.created_at DESC LIMIT 20"
+  ).all();
+  return results.map(j => ({ ...j, payload: JSON.parse(j.payload) }));
 }
 
 async function getPendingJobs(env) {
