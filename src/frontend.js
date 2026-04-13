@@ -337,15 +337,7 @@ function rOrders(){
   if(!S.tickets.length){ta.innerHTML='<div class="empty"><div class="empty-i">✓</div><div class="empty-t">Keine offenen Bons</div></div>';return;}
   const g=document.createElement('div');g.className='og';
 
-  // Tickets nach Pin-Priorität sortieren
-  const sorted=[...S.tickets].sort((a,b)=>{
-    const pa=Math.min(...a.items.map(i=>PINS[i.product_name]?PINS[i.product_name].slot:9999));
-    const pb=Math.min(...b.items.map(i=>PINS[i.product_name]?PINS[i.product_name].slot:9999));
-    if(pa!==pb) return pa-pb;
-    return new Date(a.created_at)-new Date(b.created_at);
-  });
-
-  sorted.forEach(t=>{
+  S.tickets.forEach(t=>{
     const urg=t.wait_mins>=15?'urg':(t.wait_mins>=8?'wrn':'');
     // Pin-Farbe: höchstpriorisiertes gepinntes Produkt im Bon
     const pinMatch=t.items.map(i=>PINS[i.product_name]).filter(Boolean).sort((a,b)=>a.slot-b.slot)[0];
@@ -353,11 +345,7 @@ function rOrders(){
     const card=document.createElement('div');
     card.className='tc'+(t.status==='printing'?' printing':'');
     card.id='card-'+t.id;
-    if(pinColor){
-      card.style.background=pinColor+'22';
-      card.style.borderColor=pinColor;
-      card.style.borderWidth='2px';
-    }
+
     const itemsHtml=t.items.map((i,idx)=>{
       const k=t.id+'-'+idx; const sq=S.sel[k]||0;
       const done=i.quantity<=0;
@@ -446,7 +434,21 @@ function renderTot(){
   const list=document.getElementById('totList');
   const prev=S.prev;const next={};
   S.totals.forEach(t=>next[t.product_name]=t.total);
-  list.innerHTML=S.totals.map(t=>'<div class="tot-row"><span class="tot-name">'+t.product_name+'</span><span class="tot-num'+(prev[t.product_name]!==t.total?' up':'')+'" >'+t.total+'</span></div>').join('')||'<div style="padding:14px;color:var(--muted);font-size:15px">Keine offenen Bons</div>';
+
+  // Nach Pin-Slot sortieren, dann nach Menge
+  const sorted=[...S.totals].sort((a,b)=>{
+    const pa=PINS[a.product_name]?PINS[a.product_name].slot:9999;
+    const pb=PINS[b.product_name]?PINS[b.product_name].slot:9999;
+    if(pa!==pb) return pa-pb;
+    return b.total-a.total;
+  });
+
+  list.innerHTML=sorted.map(t=>{
+    const pin=PINS[t.product_name];
+    const col=pin&&pin.color?pin.color:null;
+    const bg=col?'background:'+col+'33;border-left:3px solid '+col+';':'';
+    return '<div class="tot-row" style="'+bg+'"><span class="tot-name">'+t.product_name+'</span><span class="tot-num'+(prev[t.product_name]!==t.total?' up':'')+'" style="'+(col?'color:'+col+';':'')+'>'+t.total+'</span></div>';
+  }).join('')||'<div style="padding:14px;color:var(--muted);font-size:15px">Keine offenen Bons</div>';
   document.getElementById('totBons').textContent=S.tickets.length;
   S.prev=next;
 }
