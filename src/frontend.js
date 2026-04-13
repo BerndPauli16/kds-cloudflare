@@ -248,7 +248,7 @@ function connectWS(){
     const m=JSON.parse(data);
     if(m.type==='pong') return;
     // 300ms warten damit D1 die Writes committed hat, dann sync
-    setTimeout(()=>Promise.all([loadT(),loadTot()]),300);
+    Promise.all([loadT(),loadTot()]);
   };
 }
 
@@ -304,7 +304,7 @@ function rProducts(){
   }
 
   const grid=document.createElement('div');grid.className='pv';
-  Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([n,rows])=>{
+  Object.entries(map).filter(([,rows])=>rows.reduce((s,r)=>s+r.qty,0)>0).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([n,rows])=>{
     const tot=rows.reduce((s,r)=>s+r.qty,0);
     const g=document.createElement('div');g.className='pg';
     // Nur Produktname + Gesamtzahl, keine Tisch-Aufschlüsselung
@@ -387,18 +387,22 @@ async function partPrt(tid){
   // Wenn Produktansicht aktiv: auch dort sofort updaten
   if(S.view==='products') rProducts();
 
-  // API im Hintergrund — WebSocket macht den finalen Sync, kein loadT() der stale Daten zurückschreibt
+  // API im Hintergrund + direktes Reload nach 500ms (D1 committed dann)
   fetch('/api/tickets/'+tid+'/partial-print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})})
+    .then(()=>setTimeout(()=>Promise.all([loadT(),loadTot()]),10))
     .catch(()=>{if(bp){bp.disabled=false;bp.textContent='✂ Teildruck';}});
 }
 
 function rebuildTotals(){
   const map={};
   S.tickets.forEach(t=>t.items.forEach(i=>{
+    if(i.quantity<=0) return;
     if(!map[i.product_name])map[i.product_name]=0;
     map[i.product_name]+=i.quantity;
   }));
-  S.totals=Object.entries(map).map(([product_name,total])=>({product_name,total}))
+  S.totals=Object.entries(map)
+    .filter(([,total])=>total>0)
+    .map(([product_name,total])=>({product_name,total}))
     .sort((a,b)=>b.total-a.total);
 }
 
@@ -410,9 +414,10 @@ async function prt(id){
   rebuildTotals();
   render();
   renderTot();
-  // API im Hintergrund — WebSocket macht den finalen Sync
+  // API + Reload nach 500ms
   fetch('/api/tickets/'+id+'/print',{method:'POST'})
-    .then(()=>fetch('/api/tickets/'+id+'/done',{method:'POST'}));
+    .then(()=>fetch('/api/tickets/'+id+'/done',{method:'POST'}))
+    .then(()=>setTimeout(()=>Promise.all([loadT(),loadTot()]),10));
 }
 
 async function don(id){await fetch('/api/tickets/'+id+'/done',{method:'POST'});await Promise.all([loadT(),loadTot()]);}
