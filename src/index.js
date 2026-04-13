@@ -235,21 +235,24 @@ async function partialPrintTicket(env, ticketId, selectedItems) {
   }
 
   // Print-Job anlegen
-  // 1. Erst Mengen reduzieren
-  for (const sel of selectedItems) {
-    const existing = await env.DB.prepare(
-      'SELECT id, quantity FROM ticket_items WHERE ticket_id = ? AND product_name = ?'
-    ).bind(ticketId, sel.product_name).first();
+  // 1. Alle aktuellen Artikel in einem Query laden
+  const { results: currentItems } = await env.DB.prepare(
+    'SELECT id, product_name, quantity FROM ticket_items WHERE ticket_id = ?'
+  ).bind(ticketId).all();
 
+  // 2. Batch: alle Updates/Deletes auf einmal
+  const batchStmts = [];
+  for (const sel of selectedItems) {
+    const existing = currentItems.find(i => i.product_name === sel.product_name);
     if (!existing) continue;
     const newQty = existing.quantity - sel.quantity;
-
     if (newQty <= 0) {
-      await env.DB.prepare('DELETE FROM ticket_items WHERE id = ?').bind(existing.id).run();
+      batchStmts.push(env.DB.prepare('DELETE FROM ticket_items WHERE id = ?').bind(existing.id));
     } else {
-      await env.DB.prepare('UPDATE ticket_items SET quantity = ? WHERE id = ?').bind(newQty, existing.id).run();
+      batchStmts.push(env.DB.prepare('UPDATE ticket_items SET quantity = ? WHERE id = ?').bind(newQty, existing.id));
     }
   }
+  if (batchStmts.length > 0) await env.DB.batch(batchStmts);
 
   // 2. Original-Bestellung aus Ticket laden (bleibt immer gleich bis Bon weg ist)
   const originalItems = JSON.parse(ticket.original_items || '[]');

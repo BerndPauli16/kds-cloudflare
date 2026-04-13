@@ -336,18 +336,44 @@ async function partPrt(tid){
   const items=t.items.map((i,idx)=>({...i,quantity:S.sel[tid+'-'+idx]||0})).filter(i=>i.quantity>0);
   if(!items.length)return;
   const bp=document.getElementById('bp-'+tid);if(bp){bp.disabled=true;bp.textContent='⏳ Druckt…';}
-  // Sofort Mengen im State reduzieren → UI aktualisiert sich instant
+  // Sofort State aktualisieren
   items.forEach(sel=>{
     const item=t.items.find(i=>i.product_name===sel.product_name);
-    if(item){item.quantity-=sel.quantity;}
+    if(item) item.quantity-=sel.quantity;
   });
   t.items=t.items.filter(i=>i.quantity>0);
-  if(t.items.length===0) S.tickets=S.tickets.filter(x=>x.id!==tid);
+  const ticketGone=t.items.length===0;
+  if(ticketGone) S.tickets=S.tickets.filter(x=>x.id!==tid);
   t.items.forEach((_,idx)=>delete S.sel[tid+'-'+idx]);
+
+  // Nur die eine Karte updaten (kein Full-Rerender)
+  if(ticketGone){
+    const card=document.getElementById('card-'+tid);
+    if(card) card.parentElement&&card.parentElement.removeChild(card);
+    if(!S.tickets.length) document.getElementById('tickets').innerHTML='<div class="empty"><div class="empty-i">✓</div><div class="empty-t">Keine offenen Bons</div></div>';
+  } else {
+    // Nur Items dieser Karte neu rendern
+    const card=document.getElementById('card-'+tid);
+    if(card){
+      const itemsDiv=card.querySelector('.tc-items');
+      if(itemsDiv) itemsDiv.innerHTML=t.items.map((i,i2)=>{
+        const cls='t-item'+(i.quantity<=0?' done':'');
+        const click=i.quantity<=0?'':' onclick="selItem('+tid+','+i2+','+i.quantity+')"';
+        const extras=i.extras&&i.extras.length?'<div class="t-extras">'+i.extras.map(e=>'<span class="t-extra">'+e+'</span>').join('')+'</div>':'';
+        return '<div class="'+cls+'"'+click+'><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span></div>'+extras+'</div>';
+      }).join('');
+      const bp2=card.querySelector('[id^="bp-"]');
+      if(bp2) bp2.disabled=true;
+    }
+  }
+
+  // Live-Summe sofort aktualisieren
   rebuildTotals();
-  render();
   renderTot();
-  // API im Hintergrund
+  // Wenn Produktansicht aktiv: auch dort sofort updaten
+  if(S.view==='products') rProducts();
+
+  // API im Hintergrund — kein await, kein Warten
   fetch('/api/tickets/'+tid+'/partial-print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})})
     .then(()=>Promise.all([loadT(),loadTot()]))
     .catch(()=>{if(bp){bp.disabled=false;bp.textContent='✂ Teildruck';}});
