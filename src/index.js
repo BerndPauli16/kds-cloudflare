@@ -3,7 +3,6 @@
 // ════════════════════════════════════════════════
 import { KDSRoom }    from './kds-room.js';
 import { getHTML }    from './frontend.js';
-import { getPrinterHTML } from './printer.js';
 
 export { KDSRoom };
 
@@ -77,16 +76,6 @@ async function handleAPI(request, env, url, method) {
     }
 
     // ── Ticket als erledigt markieren ────────────
-    // ── Teildruck ────────────────────────────────────────────
-    const partialMatch = path.match(/^\/tickets\/(\d+)\/partial-print$/);
-    if (partialMatch && method === 'POST') {
-      const id     = parseInt(partialMatch[1]);
-      const body   = await request.json();
-      const result = await partialPrintTicket(env, id, body.items || []);
-      await broadcastUpdate(env, result.station_id, { type: 'ticket_partial_printed', ticketId: id });
-      return jsonResponse(result);
-    }
-
     const doneMatch = path.match(/^\/tickets\/(\d+)\/done$/);
     if (doneMatch && method === 'POST') {
       const id     = parseInt(doneMatch[1]);
@@ -105,13 +94,6 @@ async function handleAPI(request, env, url, method) {
       requireApiKey(request, env);
       const jobId = parseInt(path.split('/')[2]);
       return jsonResponse(await completeJob(env, jobId));
-    }
-
-    // ── Client-IP (für Monitor-Anzeige) ─────────
-    if (path === '/client-ip' && method === 'GET') {
-      const ip = request.headers.get('CF-Connecting-IP') ||
-                 request.headers.get('X-Forwarded-For') || 'unbekannt';
-      return jsonResponse({ ip });
     }
 
     // ── Live-Summen ──────────────────────────────
@@ -151,35 +133,24 @@ async function getTickets(env, stationId) {
 
   const { results: tickets } = await env.DB.prepare(query).bind(...params).all();
 
-  if (!tickets.length) return [];
-
-  // ALLE Items für alle offenen Tickets in EINEM Query (kein N+1 mehr)
-  const ids = tickets.map(t => t.id);
-  const { results: allItems } = await env.DB.prepare(
-    'SELECT * FROM ticket_items WHERE ticket_id IN (' + ids.map(() => '?').join(',') + ')'
-  ).bind(...ids).all();
-
-  const itemsByTicket = {};
-  for (const item of allItems) {
-    if (!itemsByTicket[item.ticket_id]) itemsByTicket[item.ticket_id] = [];
-    itemsByTicket[item.ticket_id].push({ ...item, extras: JSON.parse(item.extras || '[]') });
-  }
-
-  const now = Date.now();
+  // Items für jeden Ticket laden
   for (const ticket of tickets) {
-    ticket.items     = itemsByTicket[ticket.id] || [];
-    ticket.wait_mins = Math.floor((now - new Date(ticket.created_at).getTime()) / 60000);
+    const { results: items } = await env.DB.prepare(
+      'SELECT * FROM ticket_items WHERE ticket_id = ?'
+    ).bind(ticket.id).all();
+    ticket.items     = items.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') }));
+    ticket.wait_mins = Math.floor((Date.now() - new Date(ticket.created_at).getTime()) / 60000);
   }
+
   return tickets;
 }
 
 async function createTicket(env, body) {
   const { ticket_number, table_number, station_id, items } = body;
 
-  const originalItemsJson = JSON.stringify(items || []);
   const { meta } = await env.DB.prepare(
-    'INSERT INTO tickets (ticket_number, table_number, station_id, original_items) VALUES (?, ?, ?, ?)'
-  ).bind(ticket_number, table_number, station_id, originalItemsJson).run();
+    'INSERT INTO tickets (ticket_number, table_number, station_id) VALUES (?, ?, ?)'
+  ).bind(ticket_number, table_number, station_id).run();
 
   const ticketId = meta.last_row_id;
 
@@ -189,6 +160,12 @@ async function createTicket(env, body) {
       'INSERT INTO ticket_items (ticket_id, product_name, quantity, extras) VALUES (?, ?, ?, ?)'
     ).bind(ticketId, item.product_name, item.quantity, JSON.stringify(item.extras || [])).run();
   }
+
+  // Print-Job erstellen
+  const payload = JSON.stringify({ ticket_number, table_number, items });
+  await env.DB.prepare(
+    'INSERT INTO print_jobs (ticket_id, payload) VALUES (?, ?)'
+  ).bind(ticketId, payload).run();
 
   return { id: ticketId, ticket_number, table_number, station_id, items };
 }
@@ -205,20 +182,11 @@ async function printTicket(env, ticketId) {
     'SELECT * FROM ticket_items WHERE ticket_id = ?'
   ).bind(ticketId).all();
 
-  // Prüfen ob vorher schon Teildrucke waren (original_items vorhanden)
-  const originalItems = ticket.original_items ? JSON.parse(ticket.original_items) : null;
-  const hadPartialPrints = originalItems && originalItems.length > 0;
-
   const payload = JSON.stringify({
     ticket_number: ticket.ticket_number,
     table_number:  ticket.table_number,
     station_name:  ticket.station_name,
     items:         items.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') })),
-    created_at:    ticket.created_at,
-    // Wenn vorher Teildrucke: DER REST VON + Originalbon anzeigen
-    all_items:     hadPartialPrints ? originalItems : null,
-    is_last:       hadPartialPrints,
-    partial:       hadPartialPrints,
     printed_at:    new Date().toISOString(),
   });
 
@@ -231,79 +199,6 @@ async function printTicket(env, ticketId) {
   ).bind(ticketId).run();
 
   return { ...ticket, status: 'printing' };
-}
-
-
-async function partialPrintTicket(env, ticketId, selectedItems) {
-  const ticket = await env.DB.prepare(
-    'SELECT t.*, s.name as station_name FROM tickets t LEFT JOIN stations s ON t.station_id = s.id WHERE t.id = ?'
-  ).bind(ticketId).first();
-
-  if (!ticket) throw Object.assign(new Error('Not found'), { status: 404 });
-  if (!selectedItems || selectedItems.length === 0) {
-    throw Object.assign(new Error('Keine Artikel ausgewählt'), { status: 400 });
-  }
-
-  // Print-Job anlegen
-  // 1. Alle aktuellen Artikel in einem Query laden
-  const { results: currentItems } = await env.DB.prepare(
-    'SELECT id, product_name, quantity FROM ticket_items WHERE ticket_id = ?'
-  ).bind(ticketId).all();
-
-  // 2. Batch: alle Updates/Deletes auf einmal
-  const batchStmts = [];
-  for (const sel of selectedItems) {
-    const existing = currentItems.find(i => i.product_name === sel.product_name);
-    if (!existing) continue;
-    const newQty = existing.quantity - sel.quantity;
-    if (newQty <= 0) {
-      batchStmts.push(env.DB.prepare('DELETE FROM ticket_items WHERE id = ?').bind(existing.id));
-    } else {
-      batchStmts.push(env.DB.prepare('UPDATE ticket_items SET quantity = ? WHERE id = ?').bind(newQty, existing.id));
-    }
-  }
-  if (batchStmts.length > 0) await env.DB.batch(batchStmts);
-
-  // 2. Original-Bestellung aus Ticket laden (bleibt immer gleich bis Bon weg ist)
-  const originalItems = JSON.parse(ticket.original_items || '[]');
-
-  // Fallback: falls original_items noch nicht gesetzt, aktuelle Items nehmen
-  let allItemsForVon = originalItems;
-  if (!allItemsForVon.length) {
-    const { results: cur } = await env.DB.prepare(
-      'SELECT * FROM ticket_items WHERE ticket_id = ?'
-    ).bind(ticketId).all();
-    allItemsForVon = cur.map(i => ({ ...i, extras: JSON.parse(i.extras || '[]') }));
-  }
-
-  // Prüfen ob das der letzte Teildruck ist (nichts mehr übrig)
-  const { results: afterRemaining } = await env.DB.prepare(
-    'SELECT id FROM ticket_items WHERE ticket_id = ?'
-  ).bind(ticketId).all();
-  const isLastPartial = afterRemaining.length === 0;
-
-  // 3. Print-Job mit Original-Bestellung als "EIN TEIL VON" / "DER REST VON"
-  const payload = JSON.stringify({
-    ticket_number: ticket.ticket_number,
-    table_number:  ticket.table_number,
-    station_name:  ticket.station_name,
-    items:         selectedItems,
-    all_items:     allItemsForVon,
-    partial:       true,
-    is_last:       isLastPartial,
-    created_at:    ticket.created_at,
-    printed_at:    new Date().toISOString(),
-  });
-  await env.DB.prepare(
-    'INSERT INTO print_jobs (ticket_id, payload) VALUES (?, ?)'
-  ).bind(ticketId, payload).run();
-
-  // 4. Bon schließen wenn nichts mehr übrig
-  if (remaining.length === 0) {
-    await env.DB.prepare("UPDATE tickets SET status = 'done' WHERE id = ?").bind(ticketId).run();
-  }
-
-  return { ...ticket, partial: true };
 }
 
 async function markDone(env, ticketId) {

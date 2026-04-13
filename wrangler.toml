@@ -1,4 +1,4 @@
-name = "kds-cloudflare"
+name = "kds-worker"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
@@ -7,7 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "kds-db"
-database_id = "b76c3d0e-43ec-42cb-9a63-bd3d68c92b15"
+database_id = "DEINE_D1_DATABASE_ID"   # ← nach `wrangler d1 create kds-db` eintragen
 
 # ─── R2 Objekt-Speicher ─────────────────────────────────────
 [[r2_buckets]]
@@ -22,7 +22,7 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["KDSRoom"]   # Free Plan — bei Upgrade auf Enterprise: auf new_classes = ["KDSRoom"] ändern
+new_classes = ["KDSRoom"]
 
 # ─── Secrets (via `wrangler secret put API_KEY`) ─────────────
 # API_KEY  → schützt den /api Endpunkt für den Print-Agent
