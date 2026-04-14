@@ -79,6 +79,50 @@ const httpServer = http.createServer((req, res) => {
   req.on('end', async () => {
     console.log(`[ePOS] ${req.method} ${req.url}`);
 
+    // ── TEST-PRINT Route ─────────────────────────
+    if (req.url === '/test-print' && req.method === 'POST') {
+      let cfg = {};
+      try { cfg = JSON.parse(body); } catch(e) {}
+      const cpl = parseInt(cfg.charsPerLine) || 42;
+      console.log(`[TEST] Kalibrierungsdruck – ${cpl} Zeichen/Zeile`);
+      const ESC = 0x1b, GS = 0x1d;
+      const b = [];
+      const add = (...bytes) => bytes.forEach(x => b.push(x));
+      const txt = (s) => { for(const c of s) b.push(c.charCodeAt(0)&0xff); b.push(0x0a); };
+      add(ESC,0x40); add(ESC,0x74,0x11);
+      add(ESC,0x61,0x01); add(ESC,0x45,0x01); txt('=== KALIBRIERUNG ==='); add(ESC,0x45,0x00);
+      add(ESC,0x61,0x00); txt('');
+      const nums = '1234567890';
+      // Größe A – Normal
+      add(GS,0x21,0x00); txt('GROESSE A (1x Normal):');
+      txt((nums.repeat(8)).substring(0,70)); txt('');
+      // Größe B – 2x Breite
+      add(GS,0x21,0x10); txt('GROESSE B (2x Breite):');
+      txt((nums.repeat(4)).substring(0,35)); add(GS,0x21,0x00); txt('');
+      // Größe C – 2x Breite+Höhe
+      add(GS,0x21,0x11); txt('GROESSE C (3x):');
+      txt((nums.repeat(3)).substring(0,22)); add(GS,0x21,0x00); txt('');
+      txt('--------------------------------');
+      txt('Zeichen in GROESSE A zaehlen:');
+      txt('');
+      txt('Zeichen/Zeile: [        ]');
+      txt(''); txt(`Aktuell: ${cpl} Zeichen/Zeile`); txt('');
+      add(GS,0x56,0x42,0x00);
+      try {
+        await sendToPrinterRaw(Buffer.from(b));
+        console.log('[TEST] OK');
+        const ok = JSON.stringify({ok:true});
+        res.writeHead(200,{...CORS_HEADERS,'Content-Type':'application/json','Content-Length':String(ok.length)});
+        res.end(ok);
+      } catch(e) {
+        console.error('[TEST] Fehler:', e.message);
+        const err = JSON.stringify({ok:false,error:e.message});
+        res.writeHead(500,{...CORS_HEADERS,'Content-Type':'application/json','Content-Length':String(err.length)});
+        res.end(err);
+      }
+      return;
+    }
+
     // Status-Anfrage (GET oder leerer POST)
     if (req.method === 'GET' || body.length < 20) {
       const resp = '<?xml version="1.0" encoding="utf-8"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><response xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print" success="true" code="SUCCESS" status="1814789376" battery="0"/></SOAP-ENV:Body></SOAP-ENV:Envelope>';
@@ -90,8 +134,6 @@ const httpServer = http.createServer((req, res) => {
     // Druck-Anfrage (POST mit XML)
     console.log(`[ePOS] Druckjob empfangen (${body.length} bytes)`);
 
-    // XML für Debugging loggen (erste 800 Zeichen)
-    console.log('[ePOS] XML:', body.substring(0, 800));
 
     // SOFORT antworten – asello nicht warten lassen
     const soapResp = '<?xml version="1.0" encoding="utf-8"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><response xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print" success="true" code="SUCCESS" status="1814789376" battery="0"/></SOAP-ENV:Body></SOAP-ENV:Envelope>';
@@ -116,96 +158,6 @@ const httpServer = http.createServer((req, res) => {
 
 httpServer.listen(CFG.proxyPort, '0.0.0.0', () => {
   console.log(`[ePOS]  HTTP-Proxy auf Port ${CFG.proxyPort}`);
-});
-
-// ═══════════════════════════════════════════════
-//  TEST-PRINT HTTP Endpoint (Port 8009 /test-print)
-// ═══════════════════════════════════════════════
-// Eingebaut in httpServer via separaten Handler
-const _origHandler = httpServer.listeners('request')[0];
-httpServer.removeAllListeners('request');
-httpServer.on('request', (req, res) => {
-  if (req.url === '/test-print' && req.method === 'POST') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', async () => {
-      let cfg = {};
-      try { cfg = JSON.parse(body); } catch(e) {}
-      const cpl = parseInt(cfg.charsPerLine) || 42;
-      console.log(`[TEST] Kalibrierungsdruck – ${cpl} Zeichen/Zeile`);
-
-      const ESC = 0x1b, GS = 0x1d, LF = 0x0a;
-      const buf = [];
-      const add = (...bytes) => bytes.forEach(b => buf.push(b));
-      const txt = (s) => { for(const c of s) buf.push(c.charCodeAt(0) & 0xff); buf.push(LF); };
-
-      // Init
-      add(ESC, 0x40);
-      add(ESC, 0x74, 0x11); // UTF-8
-
-      // Header
-      add(ESC, 0x61, 0x01); // zentriert
-      add(ESC, 0x45, 0x01); // Bold
-      txt('=== KALIBRIERUNG ===');
-      add(ESC, 0x45, 0x00);
-      add(ESC, 0x61, 0x00); // links
-      txt('');
-
-      // Zähler-String (10er Wiederholung)
-      const nums = '1234567890';
-      const strip70 = (nums.repeat(8)).substring(0, 70);
-      const stripHalf = (nums.repeat(4)).substring(0, 35);
-      const stripThird = (nums.repeat(3)).substring(0, 22);
-
-      // GRÖSSE A – Normal
-      add(GS, 0x21, 0x00);
-      txt('GROESSE A (1x):');
-      add(GS, 0x21, 0x00);
-      txt(strip70);
-      txt('');
-
-      // GRÖSSE B – Doppelte Breite
-      add(GS, 0x21, 0x10);
-      txt('GROESSE B (2x):');
-      txt(stripHalf);
-      add(GS, 0x21, 0x00);
-      txt('');
-
-      // GRÖSSE C – Doppelte Breite + Höhe
-      add(GS, 0x21, 0x11);
-      txt('GROESSE C (3x):');
-      txt(stripThird);
-      add(GS, 0x21, 0x00);
-      txt('');
-
-      // Auswertung
-      txt('─'.repeat(32));
-      txt('Zaehle Zeichen in Groesse A:');
-      txt('');
-      txt('Zeichen/Zeile: [        ]');
-      txt('');
-      txt(`Aktuell: ${cpl} Zeichen/Zeile`);
-      txt('');
-
-      // Schnitt
-      add(GS, 0x56, 0x42, 0x00);
-
-      const printBuf = Buffer.from(buf);
-      try {
-        await sendToPrinterRaw(printBuf);
-        console.log('[TEST] ✓ Kalibrierungsdruck gesendet');
-        res.writeHead(200, { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Content-Length': '14' });
-        res.end(JSON.stringify({ ok: true }));
-      } catch(e) {
-        console.error('[TEST] Fehler:', e.message);
-        const err = JSON.stringify({ ok: false, error: e.message });
-        res.writeHead(500, { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Content-Length': String(err.length) });
-        res.end(err);
-      }
-    });
-    return;
-  }
-  _origHandler(req, res);
 });
 
 //  ESC/POS → Klartext
