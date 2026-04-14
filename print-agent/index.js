@@ -436,6 +436,7 @@ async function parseAndForward(rawBuf) {
     ticket_number: ticketId,
     table_number:  parsed.tableNumber || '–',
     station_id:    CFG.stationId,
+    station_name:  parsed.senderName || null,
     items:         parsed.items,
   };
 
