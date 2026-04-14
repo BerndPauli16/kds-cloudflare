@@ -143,10 +143,10 @@ export function getHTML() {
   #main.products-view aside{display:none}
   .empty-i{font-size:52px} .empty-t{font-size:19px;font-weight:600;letter-spacing:.8px}
 
-  .pin-btn{position:absolute;top:6px;left:6px;background:transparent;border:none;cursor:pointer;opacity:.25;font-size:14px;transition:opacity .2s;padding:2px;line-height:1;z-index:2}
+  .pin-btn{background:transparent;border:none;cursor:pointer;opacity:.35;font-size:15px;transition:all .2s;padding:2px 5px;line-height:1}
   .pin-btn:hover{opacity:1;transform:scale(1.2)}
   .pin-btn.pinned{opacity:1;filter:drop-shadow(0 0 3px var(--amber))}
-  .color-btn{position:absolute;top:7px;left:28px;width:15px;height:15px;border-radius:50%;border:2px solid rgba(255,255,255,.3);cursor:pointer;z-index:2;transition:transform .15s}
+  .color-btn{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.4);cursor:pointer;flex-shrink:0;transition:transform .15s}
   .color-btn:hover{transform:scale(1.2)}
   .color-inp{position:absolute;opacity:0;width:0;height:0}
   .pg{position:relative;display:flex;flex-direction:column}
