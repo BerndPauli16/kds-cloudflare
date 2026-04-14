@@ -74,22 +74,23 @@ const httpServer = http.createServer((req, res) => {
     // Druck-Anfrage (POST mit XML)
     console.log(`[ePOS] Druckjob empfangen (${body.length} bytes)`);
 
-    try {
-      // XML → ESC/POS → Drucker
-      const escBuf = eposXmlToEscpos(body);
-      await sendToPrinterRaw(escBuf);
-      console.log(`[ePOS] ✓ Gedruckt (${escBuf.length} bytes)`);
-
-      // KDS-Parsing parallel
-      if (CFG.workerUrl) {
-        parseAndForward(escBuf).catch(e => console.error('[PARSER]', e.message));
-      }
-    } catch(e) {
-      console.error('[ePOS] Druckfehler:', e.message);
-    }
-
+    // SOFORT antworten – asello nicht warten lassen
     res.writeHead(200, {'Content-Type': 'text/xml; charset=utf-8'});
     res.end('<?xml version="1.0" encoding="utf-8"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><epos-print:response xmlns:epos-print="http://www.epson-pos.com/schemas/2011/03/epos-print" success="true" code="SUCCESS" status="1814789376" battery="0"/></SOAP-ENV:Body></SOAP-ENV:Envelope>');
+
+    // Drucken + KDS asynchron (nach Response)
+    setImmediate(async () => {
+      try {
+        const escBuf = eposXmlToEscpos(body);
+        await sendToPrinterRaw(escBuf);
+        console.log(`[ePOS] ✓ Gedruckt (${escBuf.length} bytes)`);
+        if (CFG.workerUrl) {
+          parseAndForward(escBuf).catch(e => console.error('[PARSER]', e.message));
+        }
+      } catch(e) {
+        console.error('[ePOS] Druckfehler:', e.message);
+      }
+    });
   });
 });
 
