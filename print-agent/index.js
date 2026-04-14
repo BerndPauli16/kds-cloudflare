@@ -765,7 +765,8 @@ async function pollJobs() {
       }
     }
   } catch (e) {
-    console.error('[POLLER] Fehler:', e.message);
+    _pollDelay = Math.min((_pollDelay || 3000) * 2, 30000);
+    console.error('[POLLER] Fehler (retry in ' + _pollDelay + 'ms):', e.message);
   }
 }
 
@@ -788,9 +789,26 @@ if (CFG.workerUrl && CFG.apiKey) {
   })();
   loadRemoteConfig();
   setInterval(loadRemoteConfig, 5000);
-  console.log(`[POLLER] Startet – alle 3s`);
-  pollJobs();
-  setInterval(pollJobs, 3000);
+  console.log('[POLLER] Startet – alle 3s');
+  // Smarter Poller mit Backoff bei Netzwerkfehler
+  var _pollDelay = 3000;
+  var _pollOk = 0;
+  function schedulePoll() {
+    setTimeout(async function() {
+      try {
+        await pollJobs();
+        _pollOk++;
+        if (_pollDelay > 3000) {
+          _pollDelay = 3000; // Reset nach erfolgreichen Polls
+          console.log('[POLLER] Verbindung wiederhergestellt');
+        }
+      } catch(e) {
+        // pollJobs hat intern try/catch, dieser Block wird kaum erreicht
+      }
+      schedulePoll();
+    }, _pollDelay);
+  }
+  schedulePoll();
 } else {
   console.log('[POLLER] Kein Worker-URL/API-Key – Poller deaktiviert');
 }
