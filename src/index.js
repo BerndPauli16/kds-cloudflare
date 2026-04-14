@@ -387,7 +387,7 @@ async function createTicket(env, body) {
 }
 
 async function printTicket(env, ticketId) {
-  const ticket = await env.DB.prepare('SELECT t.*, s.name as station_name FROM tickets t LEFT JOIN stations s ON t.station_id = s.id WHERE t.id = ?').bind(ticketId).first();
+  const ticket = await env.DB.prepare('SELECT t.*, COALESCE(t.kellner, s.name, \'BESTELLUNG\') as station_name FROM tickets t LEFT JOIN stations s ON t.station_id = s.id WHERE t.id = ?').bind(ticketId).first();
   if (!ticket) throw Object.assign(new Error('Not found'), { status: 404 });
   const { results: items } = await env.DB.prepare('SELECT * FROM ticket_items WHERE ticket_id = ?').bind(ticketId).all();
   const originalItems = ticket.original_items ? JSON.parse(ticket.original_items) : null;
@@ -399,7 +399,7 @@ async function printTicket(env, ticketId) {
 }
 
 async function partialPrintTicket(env, ticketId, selectedItems) {
-  const ticket = await env.DB.prepare('SELECT t.*, s.name as station_name FROM tickets t LEFT JOIN stations s ON t.station_id = s.id WHERE t.id = ?').bind(ticketId).first();
+  const ticket = await env.DB.prepare('SELECT t.*, COALESCE(t.kellner, s.name, \'BESTELLUNG\') as station_name FROM tickets t LEFT JOIN stations s ON t.station_id = s.id WHERE t.id = ?').bind(ticketId).first();
   if (!ticket) throw Object.assign(new Error('Not found'), { status: 404 });
   if (!selectedItems || selectedItems.length === 0) throw Object.assign(new Error('Keine Artikel'), { status: 400 });
   const { results: currentItems } = await env.DB.prepare('SELECT id, product_name, quantity FROM ticket_items WHERE ticket_id = ?').bind(ticketId).all();
