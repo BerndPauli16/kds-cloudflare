@@ -129,6 +129,7 @@ export function getHTML() {
   .pgh{padding:10px 12px 10px 12px;background:var(--sur2);display:flex;justify-content:space-between;align-items:flex-start;gap:8px;border-radius:10px;position:relative;min-height:64px}
   .pgn{font-size:14px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt);flex:1;line-height:1.25;word-break:break-word;padding-right:50px;padding-top:2px}
   .pgt{font-family:var(--mono);font-size:48px;font-weight:700;color:var(--amber);line-height:1;position:absolute;top:8px;right:10px}
+  [data-theme=light] .pgt{color:#111}
   .prs{padding:4px 0;flex:1}
   .pg-footer{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:rgba(0,0,0,.15);border-top:1px solid rgba(255,255,255,.08);min-height:30px}
   .pg-footer-center{display:flex;align-items:center;gap:6px}
