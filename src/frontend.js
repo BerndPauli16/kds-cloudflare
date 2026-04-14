@@ -251,7 +251,7 @@ export function getHTML() {
   .hr{background:var(--sur);border:1px solid var(--brd);border-radius:6px;padding:7px 10px;font-size:11px;line-height:1.5}
   .hr-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .hr-tisch{font-size:13px;font-weight:700;color:var(--txt);min-width:70px}
-  .hr-kel{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.04em}
+  .hr-kel{font-size:11px;color:var(--amber);font-weight:700;letter-spacing:.03em}
   .hr-bon{font-size:10px;color:var(--muted);font-family:var(--mono)}
   .hr-time{font-size:10px;font-family:var(--mono);color:var(--muted);margin-left:auto}
   .hr-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.04em}
@@ -259,8 +259,13 @@ export function getHTML() {
   .hr-badge.open{background:rgba(251,191,36,.15);color:#d97706}
   .hr-dauer{font-size:10px;color:var(--muted);font-family:var(--mono)}
   .hr-items{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-  .hr-item{font-size:10px;background:var(--sur2);border-radius:4px;padding:2px 7px;color:var(--txt);font-weight:600}
+  .hr-item{font-size:11px;background:var(--sur2);border-radius:4px;padding:2px 8px;color:var(--txt);font-weight:600;font-family:var(--font);letter-spacing:.02em}
   .hist-empty{padding:40px;text-align:center;color:var(--muted);font-size:13px}
+  .hist-tisch-wrap{display:flex;align-items:center;gap:6px;border-left:1px solid var(--brd);padding-left:10px;margin-left:4px}
+  .hist-tisch-lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .hist-tisch-inp{background:var(--sur2);border:1px solid var(--brd);border-radius:6px;color:var(--txt);font-family:var(--mono);font-size:13px;font-weight:700;width:60px;padding:3px 8px;text-align:center;outline:none}
+  .hist-tisch-inp:focus{border-color:var(--amber)}
+  .hist-tisch-inp.active{border-color:var(--amber);background:rgba(245,158,11,.1)}
   .v-empty{color:var(--muted);font-size:14px;padding:40px;text-align:center;border:1px dashed var(--brd);border-radius:8px;max-width:440px}
   /* ── Virtual Printer ── */
   #vp-view{display:none;flex-direction:column;overflow-y:auto;height:calc(100vh - var(--hh));padding:20px;width:100%}
