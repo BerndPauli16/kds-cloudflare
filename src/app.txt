@@ -280,8 +280,17 @@ async function vpLoad(){
       var lines=(b.preview||'').split(NL);
       var bodyHtml=lines.map(function(l){
         var esc=l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        if(!esc.trim()) return '<div style="height:3px"></div>';
-        if(esc.match(/^[-=]{4,}$/)) return '<hr style="border:none;border-top:1px dashed #bbb;margin:3px 0">';
+        if(!esc.trim()) return '';
+        if(esc==='---' || esc.match(/^[-=]{3,}$/)) return '<hr style="border:none;border-top:1px dashed #bbb;margin:4px 0">';
+        if(esc==='EIN TEIL VON' || esc==='DER REST VON') return '<div style="text-align:center;font-weight:700;font-size:13px;padding:3px 0;letter-spacing:.05em">'+esc+'</div>';
+        if(esc.indexOf('## ')===0){
+          var itemTxt=esc.slice(3).trim();
+          var mI=itemTxt.match(/(\d+)[x]?\s+(.+)/);
+          if(mI) return '<div style="font-weight:700;font-size:14px;padding:2px 0">'+mI[1]+'x&nbsp; '+mI[2]+'</div>';
+          return '<div style="font-weight:700;font-size:14px;padding:2px 0">'+itemTxt+'</div>';
+        }
+        if(esc.indexOf('BONIERT:')===0 || esc.indexOf('DAUER:')===0 || esc.indexOf('BIS GEDRUCKT')===0)
+          return '<div style="font-family:monospace;font-size:11px;color:#555;padding:1px 0">'+esc+'</div>';
         return '<div class="bon-raw-line">'+esc+'</div>';
       }).join('');
       return '<div class="bon-card" style="position:relative">'+
