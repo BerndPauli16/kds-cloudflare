@@ -229,6 +229,7 @@ export function getHTML() {
   .in-zeit{color:#166534;font-weight:700}
   .dauer-zeit{color:#92400e;font-weight:700;font-size:13px}
   .out-zeit{color:#1e40af;font-weight:700}
+  .bon-tisch{font-family:monospace;font-size:15px;font-weight:700;color:#111;padding:2px 0;border-bottom:1px solid #ddd;margin-bottom:4px}
   .bon-del2:hover{color:#ef4444}
   .bon-list2{display:flex;flex-direction:column;gap:14px;padding:16px;max-width:500px}
   .v-empty{color:var(--muted);font-size:14px;padding:40px;text-align:center;border:1px dashed var(--brd);border-radius:8px;max-width:440px}
