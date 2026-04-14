@@ -162,16 +162,13 @@ async function handleAPI(request, env, url, method) {
     if (path === '/bon-log' && method === 'POST') {
       requireApiKey(request, env);
       const b = await request.json();
-      const { type, preview, rawText } = b; // type: 'incoming'|'outgoing'
-      await env.DB.prepare(
-        "INSERT INTO bon_log (type, preview, raw_text, created_at) VALUES (?,?,?,?)"
-      ).bind(type, preview, rawText||'', new Date().toISOString())
-       .run().catch(async () => {
-         await env.DB.prepare("CREATE TABLE IF NOT EXISTS bon_log (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, preview TEXT, raw_text TEXT, created_at TEXT)").run();
-         await env.DB.prepare("INSERT INTO bon_log (type, preview, raw_text, created_at) VALUES (?,?,?,?)").bind(type, preview, rawText||'', new Date().toISOString()).run();
-       });
-      // Max 10 pro Typ behalten
-      await env.DB.prepare("DELETE FROM bon_log WHERE id NOT IN (SELECT id FROM bon_log WHERE type=? ORDER BY id DESC LIMIT 10)").bind(type).run().catch(()=>{});
+      const { type, preview, rawText } = b;
+      // Tabelle erstellen falls nicht vorhanden
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS bon_log (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, preview TEXT, raw_text TEXT, created_at TEXT)").run().catch(()=>{});
+      await env.DB.prepare("INSERT INTO bon_log (type, preview, raw_text, created_at) VALUES (?,?,?,?)")
+        .bind(type||'incoming', preview||'', rawText||'', new Date().toISOString()).run();
+      // Max 6 pro Typ behalten
+      await env.DB.prepare("DELETE FROM bon_log WHERE id NOT IN (SELECT id FROM bon_log WHERE type=? ORDER BY id DESC LIMIT 6)").bind(type||'incoming').run().catch(()=>{});
       return jsonResponse({ ok: true });
     }
 
