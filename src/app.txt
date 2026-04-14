@@ -779,11 +779,34 @@ function histRenderKellner(list) {
   tb.appendChild(allBtn);
   list.forEach(function(k) {
     var btn = document.createElement('button');
-    btn.className = 'kl-btn' + (HIST.kellner === k ? ' active' : '');
+    btn.className = 'kl-btn' + (!HIST.tisch && HIST.kellner === k ? ' active' : '');
     btn.textContent = k;
-    btn.onclick = function() { HIST.kellner = k; histLoad(); };
+    btn.onclick = function() { HIST.kellner = k; HIST.tisch = null; histLoad(); };
     tb.appendChild(btn);
   });
+  // Tisch-Filter Input
+  var tw = document.createElement('div');
+  tw.className = 'hist-tisch-wrap';
+  var tl = document.createElement('span');
+  tl.className = 'hist-tisch-lbl';
+  tl.textContent = 'Tisch:';
+  var ti = document.createElement('input');
+  ti.type = 'text';
+  ti.className = 'hist-tisch-inp' + (HIST.tisch ? ' active' : '');
+  ti.placeholder = 'Nr.';
+  ti.value = HIST.tisch || '';
+  ti.maxLength = 6;
+  var debTimer;
+  ti.addEventListener('input', function() {
+    HIST.tisch = ti.value.trim() || null;
+    if (HIST.tisch) HIST.kellner = null;
+    ti.className = 'hist-tisch-inp' + (HIST.tisch ? ' active' : '');
+    clearTimeout(debTimer);
+    debTimer = setTimeout(histLoad, 400);
+  });
+  tw.appendChild(tl);
+  tw.appendChild(ti);
+  tb.appendChild(tw);
 }
 
 async function vInit() {
