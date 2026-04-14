@@ -167,6 +167,63 @@ async function handleAPI(request, env, url, method) {
       return jsonResponse({ ok: true, cutoff });
     }
 
+    // ── Bon-Log: letzte einkommende/ausgehende Bons ──────────────
+    if (path === '/bons' && method === 'GET') {
+      const type = url.searchParams.get('type') || 'in';
+      const limit = parseInt(url.searchParams.get('limit') || '3');
+      const rows = await env.DB.prepare(
+        "SELECT id, type, summary, created_at FROM bon_log WHERE type=? ORDER BY created_at DESC LIMIT ?"
+      ).bind(type, limit).all().catch(() => ({ results: [] }));
+      return jsonResponse(rows.results || []);
+    }
+
+    if (path.startsWith('/bons/') && method === 'DELETE') {
+      requireApiKey(request, env);
+      const id = parseInt(path.split('/')[2]);
+      await env.DB.prepare("DELETE FROM bon_log WHERE id=?").bind(id).run().catch(() => {});
+      return jsonResponse({ ok: true });
+    }
+
+    if (path === '/bons' && method === 'POST') {
+      requireApiKey(request, env);
+      const body = await request.json();
+      const summary = JSON.stringify({
+        ticketNumber: body.ticketNumber,
+        items: body.items,
+        time: body.time,
+        table: body.table,
+        type: body.type,
+      });
+      await env.DB.prepare(
+        "CREATE TABLE IF NOT EXISTS bon_log (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, summary TEXT, created_at TEXT)"
+      ).run().catch(() => {});
+      await env.DB.prepare(
+        "INSERT INTO bon_log (type, summary, created_at) VALUES (?,?,?)"
+      ).bind(body.type || 'in', summary, new Date().toISOString()).run().catch(() => {});
+      // Max 20 Einträge pro Typ behalten
+      await env.DB.prepare(
+        "DELETE FROM bon_log WHERE type=? AND id NOT IN (SELECT id FROM bon_log WHERE type=? ORDER BY created_at DESC LIMIT 20)"
+      ).bind(body.type || 'in', body.type || 'in').run().catch(() => {});
+      return jsonResponse({ ok: true });
+    }
+
+    if (path === '/bons/state' && method === 'GET') {
+      const row = await env.DB.prepare("SELECT value FROM kv_store WHERE key='bon_state'").first().catch(() => null);
+      return jsonResponse(row ? JSON.parse(row.value) : { paused: false });
+    }
+
+    if (path === '/bons/state' && method === 'POST') {
+      requireApiKey(request, env);
+      const body = await request.json();
+      const val = JSON.stringify({ paused: body.paused });
+      await env.DB.prepare("INSERT INTO kv_store (key,value) VALUES ('bon_state',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+        .bind(val).run().catch(async () => {
+          await env.DB.prepare("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)").run();
+          await env.DB.prepare("INSERT INTO kv_store (key,value) VALUES ('bon_state',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(val).run();
+        });
+      return jsonResponse({ ok: true });
+    }
+
     return jsonResponse({ error: 'Not found' }, 404);
 
   } catch (err) {
