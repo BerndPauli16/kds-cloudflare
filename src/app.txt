@@ -284,11 +284,8 @@ async function vpLoad(){
         if(esc.match(/^[-=]{4,}$/)) return '<hr style="border:none;border-top:1px dashed #bbb;margin:3px 0">';
         return '<div class="bon-raw-line">'+esc+'</div>';
       }).join('');
-      return '<div class="bon-card">'+
-        '<div class="bon-tape">'+
-          badge+
-          '<button class="bon-del2" onclick="vpDelete('+b.id+')" title="Loeschen">&times;</button>'+
-        '</div>'+
+      return '<div class="bon-card" style="position:relative">'+
+        '<button class="bon-del2" style="position:absolute;top:6px;right:6px;z-index:1;background:#e8e5dd80;border-radius:50%;width:22px;height:22px;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0" onclick="vpDelete('+b.id+')" title="Loeschen">&times;</button>'+
         '<div class="bon-body2">'+bodyHtml+'</div>'+
         '<div class="bon-cut"></div>'+
       '</div>';
