@@ -345,7 +345,7 @@ function closeCfg() {
 function updateProxyPreview() {
   const ip = document.getElementById('cfgProxyIp').value || '192.168.192.70';
   const port = document.getElementById('cfgProxyPort').value || '8009';
-  document.getElementById('proxyPreview').textContent = `asello → http://${ip}:80 → Pi:${port}`;
+  document.getElementById('proxyPreview').textContent = 'asello → http://' + ip + ':80 → Pi:' + port;
 }
 
 function updateCplPreview() {
