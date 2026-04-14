@@ -350,9 +350,11 @@ function parseEposXml(xmlStr) {
     if (datumM) { datum = datumM[1]; uhrzeit = datumM[2]; continue; }
     const refM = line.match(/Referenznummer[:\s]+(.+)/i) || line.match(/Bon[:\s#]+(\d+)/i);
     if (refM) { ticketNumber = refM[1].trim(); continue; }
-    // Tisch aus verschiedenen Formaten
+    // Tisch aus verschiedenen Formaten inkl. asello 'T 126' Format
     const tischM = line.match(/Tisch[:\s#]*(\d+)/i) ||
                    line.match(/^T[:\s]*(\d+)$/i) ||
+                   line.match(/\/\s*T\s+(\d+)/i) ||
+                   line.match(/\bT\s+(\d+)\b/) ||
                    line.match(/Tischnr[.:\s]*(\d+)/i) ||
                    line.match(/Lokal[:\s]*(\d+)/i);
     if (tischM) { tableNumber = tischM[1]; continue; }
@@ -360,7 +362,13 @@ function parseEposXml(xmlStr) {
                      line.match(/Raum[:\s]+(.+)/i) ||
                      line.match(/Zone[:\s]+(.+)/i) ||
                      line.match(/Platz[:\s]+(.+)/i);
-    if (bereichM && !tableNumber) { tableNumber = bereichM[1].trim(); continue; }
+    if (bereichM) {
+      // T-Nummer aus Bereich extrahieren (z.B. 'Zechner Block 100 / T 126')
+      const tInBereich = (bereichM[1] || '').match(/\/\s*T\s+(\d+)/i) || (bereichM[1] || '').match(/\bT\s+(\d+)\b/);
+      if (tInBereich) { tableNumber = tInBereich[1]; }
+      else if (!tableNumber) { tableNumber = bereichM[1].trim(); }
+      continue;
+    }
     const sellerM = line.match(/Verk[äa]ufer:\s*(.+)/i);
     if (sellerM) { senderName = sellerM[1].trim(); continue; }
     if (/Anz\.?\s+Artikel/i.test(line) || /^ARTIKEL\s+MENGE/i.test(line)) { inItemBlock = true; continue; }
