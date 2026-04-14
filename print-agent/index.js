@@ -244,9 +244,53 @@ function parseTicket(lines) {
 // ════════════════════════════════════════════════
 //  Parsed Ticket → Cloudflare Worker
 // ════════════════════════════════════════════════
+function parseEposXml(xmlStr) {
+  const textMatches = xmlStr.match(/<text[^>]*>([\s\S]*?)<\/text>/gi) || [];
+  const lines = textMatches
+    .map(m => m.replace(/<[^>]+>/g,'').replace(/&#10;/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim())
+    .filter(l => l.length > 0);
+
+  const items = [];
+  let inItemBlock = false;
+  let tableNumber = null, ticketNumber = null, datum = null, uhrzeit = null, senderName = null;
+
+  for (const line of lines) {
+    const datumM = line.match(/Datum\s+([\d.]+)\s+([\d:]+)/i);
+    if (datumM) { datum = datumM[1]; uhrzeit = datumM[2]; continue; }
+    const refM = line.match(/Referenznummer[:\s]+(.+)/i) || line.match(/Bon[:\s#]+(\d+)/i);
+    if (refM) { ticketNumber = refM[1].trim(); continue; }
+    const tischM = line.match(/Tisch[:\s]*(\d+)/i);
+    if (tischM) { tableNumber = tischM[1]; continue; }
+    const bereichM = line.match(/Bereich:\s*(.+)/i);
+    if (bereichM && !tableNumber) { tableNumber = bereichM[1].trim(); continue; }
+    const sellerM = line.match(/Verk[äa]ufer:\s*(.+)/i);
+    if (sellerM) { senderName = sellerM[1].trim(); continue; }
+    if (/Anz\.?\s+Artikel/i.test(line) || /^ARTIKEL\s+MENGE/i.test(line)) { inItemBlock = true; continue; }
+    if (/^[-─═*]{4,}$/.test(line)) continue;
+    if (/Zwischensumme|^SUMME|^Gesamt|^GESAMT/i.test(line)) { inItemBlock = false; continue; }
+    if (inItemBlock) {
+      const m1 = line.match(/^(\d+)\s+([^\d].+?)(?:\s{3,}.*)?$/);
+      if (m1) {
+        const qty = parseInt(m1[1]), name = m1[2].trimEnd();
+        if (qty>0 && qty<1000 && name.length>1 && name.length<80 && !/Rabatt|Nachlass|Skonto/i.test(name))
+          { items.push({product_name:name, quantity:qty, extras:[]}); continue; }
+      }
+      const m2 = line.match(/^(.+?)\s{2,}(\d+)\s*$/);
+      if (m2) {
+        const name = m2[1].trim(), qty = parseInt(m2[2]);
+        if (qty>0 && qty<1000 && name.length>1 && name.length<80)
+          { items.push({product_name:name, quantity:qty, extras:[]}); continue; }
+      }
+      if (items.length>0 && /^\s{2,}/.test(line) && !/^\s*\d/.test(line))
+        items[items.length-1].extras.push(line.trim());
+    }
+  }
+  return {items, tableNumber, ticketNumber, datum, uhrzeit, senderName};
+}
+
 async function parseAndForward(rawBuf) {
-  const lines  = escposToLines(rawBuf);
-  const parsed = parseTicket(lines);
+  const xmlStr = rawBuf.toString('utf8');
+  const parsed = parseEposXml(xmlStr);
 
   if (parsed.items.length === 0) {
     console.log('[PARSER] Keine Artikel gefunden – übersprungen');
