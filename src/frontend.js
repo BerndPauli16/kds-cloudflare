@@ -240,7 +240,7 @@ export function getHTML() {
   .bon-del2:hover{color:#ef4444}
   .bon-list2{display:flex;flex-direction:column;gap:14px;padding:16px;max-width:500px}
   /* ── Bestellverlauf ── */
-  #histView{display:none;overflow-y:auto;height:calc(100vh - var(--hh));padding:0}
+  #histView{display:none;overflow-y:auto;height:calc(100vh - var(--hh));padding:0;grid-row:2;grid-column:1/-1}
   #histView.active{display:flex;flex-direction:column}
   .hist-toolbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--brd);flex-shrink:0;flex-wrap:wrap}
   .hist-toolbar-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
