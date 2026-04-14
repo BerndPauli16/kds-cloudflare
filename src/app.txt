@@ -383,7 +383,7 @@ function rProducts(){
   })).sort((a,b)=>PINS[a.n].slot-PINS[b.n].slot);
 
   // Ungepinnte: nur qty>0, alphabetisch
-  const unpinned=prods.filter(p=>!PINS[p.n]).sort((a,b)=>a.n.localeCompare(b.n));
+  const unpinned=prods.filter(p=>!PINS[p.n]).sort((a,b)=>b.tot-a.tot||a.n.localeCompare(b.n));
 
   // Gepinnte zuerst, dann Ungepinnte
   const result=[...pinnedItems,...unpinned];
