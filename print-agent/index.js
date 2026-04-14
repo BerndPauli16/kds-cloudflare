@@ -17,6 +17,7 @@ const CFG = {
   apiKey:       process.env.KDS_API_KEY      || '',
   stationId:    parseInt(process.env.KDS_STATION_ID) || 1,
   charsPerLine: 42,
+  paused: false,
 };
 
 let jobCounter = 0;
@@ -364,6 +365,15 @@ async function parseAndForward(rawBuf) {
     return;
   }
 
+  // Pause-Check
+  if (CFG.paused) {
+    console.log('[PARSER] ⏸ Pausiert – Bon verworfen');
+    return;
+  }
+
+  // Eingehenden Bon loggen
+  logBon('in', parsed);
+
   jobCounter++;
   const ticketId = parsed.ticketNumber || `PI-${Date.now()}-${jobCounter}`;
 
@@ -510,14 +520,39 @@ function sendToPrinter(buf) {
 async function loadRemoteConfig() {
   if (!CFG.workerUrl) return;
   try {
-    const res = await fetch(`${CFG.workerUrl}/api/config`);
-    const d = await res.json();
+    const [cfgRes, stateRes] = await Promise.all([
+      fetch(`${CFG.workerUrl}/api/config`),
+      fetch(`${CFG.workerUrl}/api/bons/state`),
+    ]);
+    const d = await cfgRes.json();
     if (d && d.printerIp && d.printerIp !== CFG.printerIp) {
       console.log(`[CONFIG] Drucker-IP: ${CFG.printerIp} → ${d.printerIp}`);
       CFG.printerIp = d.printerIp;
     }
     if (d && d.printerPort) CFG.printerPort = d.printerPort;
     if (d && d.charsPerLine) CFG.charsPerLine = d.charsPerLine;
+    const state = await stateRes.json();
+    if (CFG.paused !== state.paused) {
+      CFG.paused = state.paused;
+      console.log(`[CONFIG] ${CFG.paused ? '⏸ PAUSIERT' : '▶ AKTIV'}`);
+    }
+  } catch(e) {}
+}
+
+async function logBon(type, parsed) {
+  if (!CFG.workerUrl || !parsed) return;
+  try {
+    await fetch(`${CFG.workerUrl}/api/bons`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': CFG.apiKey },
+      body: JSON.stringify({
+        type,
+        ticketNumber: parsed.ticketNumber || '—',
+        table: parsed.tableNumber || '—',
+        items: (parsed.items || []).map(i => i.quantity + 'x ' + i.product_name).join(', '),
+        time: new Date().toISOString(),
+      }),
+    });
   } catch(e) {}
 }
 
