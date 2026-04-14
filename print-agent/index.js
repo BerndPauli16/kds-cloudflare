@@ -333,6 +333,9 @@ function parseEposXml(xmlStr) {
     let m;
     while ((m = bigTextRe.exec(xmlStr)) !== null) {
       const txt = m[1].replace(/&#10;/g,'').trim();
+      // Tisch-Erkennung in großen Texten: "Tisch 5", "T5", "Tisch: 5"
+      const bigTischM = txt.match(/^Tisch[:\s#]*(\d+)$/i) || txt.match(/^T\s*(\d+)$/i);
+      if (bigTischM) { tableNumber = bigTischM[1]; continue; }
       const itemM = txt.match(/^(\d+)\s+(.+)$/);
       if (itemM) {
         const qty = parseInt(itemM[1]);
@@ -357,9 +360,16 @@ function parseEposXml(xmlStr) {
     if (datumM) { datum = datumM[1]; uhrzeit = datumM[2]; continue; }
     const refM = line.match(/Referenznummer[:\s]+(.+)/i) || line.match(/Bon[:\s#]+(\d+)/i);
     if (refM) { ticketNumber = refM[1].trim(); continue; }
-    const tischM = line.match(/Tisch[:\s]*(\d+)/i);
+    // Tisch aus verschiedenen Formaten
+    const tischM = line.match(/Tisch[:\s#]*(\d+)/i) ||
+                   line.match(/^T[:\s]*(\d+)$/i) ||
+                   line.match(/Tischnr[.:\s]*(\d+)/i) ||
+                   line.match(/Lokal[:\s]*(\d+)/i);
     if (tischM) { tableNumber = tischM[1]; continue; }
-    const bereichM = line.match(/Bereich:\s*(.+)/i);
+    const bereichM = line.match(/Bereich:\s*(.+)/i) ||
+                     line.match(/Raum[:\s]+(.+)/i) ||
+                     line.match(/Zone[:\s]+(.+)/i) ||
+                     line.match(/Platz[:\s]+(.+)/i);
     if (bereichM && !tableNumber) { tableNumber = bereichM[1].trim(); continue; }
     const sellerM = line.match(/Verk[äa]ufer:\s*(.+)/i);
     if (sellerM) { senderName = sellerM[1].trim(); continue; }
@@ -403,6 +413,12 @@ async function parseAndForward(rawBuf) {
   // Eingehenden Bon loggen
   logBon('in', parsed);
 
+  // Wenn kein Tisch → versuche aus Ticket-Nummer zu entnehmen
+  if (!parsed.tableNumber && parsed.ticketNumber) {
+    // Bon-Nummer als Identifikator (z.B. "R20261000012" → kein Tisch)
+    // Zeige nichts statt '–'
+    parsed.tableNumber = null;
+  }
   jobCounter++;
   const ticketId = parsed.ticketNumber || `PI-${Date.now()}-${jobCounter}`;
 
