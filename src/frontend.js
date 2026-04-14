@@ -407,8 +407,11 @@ export function getHTML() {
         <div class="cfg-sec-title">📤 Ausgehender Drucker (Physisch)</div>
         <div class="cfg-grid">
           <div class="cfg-field">
-            <label class="cfg-lbl">Drucker IP-Adresse</label>
-            <input class="cfg-inp" id="cfgPrinterIp" placeholder="192.168.192.202">
+            <label class="cfg-lbl">Drucker IP-Adresse <span style="font-size:10px;color:var(--muted)">(auto-erkannt bei Netzwechsel)</span></label>
+            <div style="display:flex;gap:6px">
+              <input class="cfg-inp" id="cfgPrinterIp" placeholder="192.168.192.202" style="flex:1">
+              <button class="btn-test" id="scanBtn" onclick="doScanPrinter()" style="padding:6px 10px;font-size:11px">🔍</button>
+            </div>
           </div>
           <div class="cfg-field">
             <label class="cfg-lbl">Drucker Port</label>
