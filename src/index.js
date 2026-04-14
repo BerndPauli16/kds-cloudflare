@@ -304,7 +304,7 @@ async function getStations(env) {
 }
 
 async function getTickets(env, stationId) {
-  let query = `SELECT t.*, s.name as station_name, s.color as station_color FROM tickets t LEFT JOIN stations s ON t.station_id = s.id WHERE t.status != 'done'`;
+  let query = `SELECT t.*, COALESCE(t.kellner, s.name, 'Kellner') as station_name, s.color as station_color FROM tickets t LEFT JOIN stations s ON t.station_id = s.id WHERE t.status != 'done'`;
   const params = [];
   if (stationId) { query += ' AND t.station_id = ?'; params.push(stationId); }
   query += ' ORDER BY t.created_at ASC';
@@ -326,9 +326,11 @@ async function getTickets(env, stationId) {
 }
 
 async function createTicket(env, body) {
-  const { ticket_number, table_number, station_id, items } = body;
+  const { ticket_number, table_number, station_id, station_name: bonKellner, items } = body;
   const originalItemsJson = JSON.stringify(items || []);
-  const { meta } = await env.DB.prepare('INSERT INTO tickets (ticket_number, table_number, station_id, original_items) VALUES (?, ?, ?, ?)').bind(ticket_number, table_number, station_id, originalItemsJson).run();
+  // station_name Spalte hinzufügen falls nicht vorhanden
+  await env.DB.prepare('ALTER TABLE tickets ADD COLUMN kellner TEXT').run().catch(()=>{});
+  const { meta } = await env.DB.prepare('INSERT INTO tickets (ticket_number, table_number, station_id, original_items, kellner) VALUES (?, ?, ?, ?, ?)').bind(ticket_number, table_number, station_id, originalItemsJson, bonKellner || null).run();
   const ticketId = meta.last_row_id;
   for (const item of (items || [])) {
     await env.DB.prepare('INSERT INTO ticket_items (ticket_id, product_name, quantity, extras) VALUES (?, ?, ?, ?)').bind(ticketId, item.product_name, item.quantity, JSON.stringify(item.extras || [])).run();
