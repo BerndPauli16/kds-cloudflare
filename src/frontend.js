@@ -154,7 +154,7 @@ export function getHTML() {
   .pg-center{display:flex;align-items:center;gap:5px}
   .pg.pinned-card{border-width:2px!important}
   .pg.zero{opacity:.45}
-  .move-btn{position:absolute;bottom:6px;background:rgba(0,0,0,.25);border:none;color:rgba(255,255,255,.7);font-size:7px;cursor:pointer;padding:2px 5px;border-radius:3px;transition:all .15s;z-index:2;width:22px;text-align:center}
+  .move-btn{background:rgba(0,0,0,.2);border:none;color:rgba(255,255,255,.6);font-size:11px;cursor:pointer;padding:4px 10px;border-radius:4px;transition:all .15s}
   .move-btn:hover{background:rgba(0,0,0,.5);color:#fff}
   .move-btn.left{}
   .move-btn.right{}
