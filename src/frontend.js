@@ -422,7 +422,8 @@ export function getHTML() {
   </div>
 </div>
 
-<script>
+<script>var NL=String.fromCharCode(10);
+
 const S={view:'orders',tickets:[],totals:[],ws:null,prev:{},sel:{}};
 let curRot='landscape';
 
@@ -693,7 +694,7 @@ async function vpLoad(){
     el.innerHTML=bons.map(function(b){
       var t=new Date(b.created_at);
       var ts=t.toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      var lines=(b.preview||'').split('\n').filter(function(l){return l.trim();});
+      var lines=(b.preview||'').split(NL).filter(function(l){return l.trim();});
       var itemsHtml=lines.map(function(l){
         if(l.indexOf('## ')===0){
           var txt=l.slice(3).trim();
