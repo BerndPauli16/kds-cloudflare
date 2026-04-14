@@ -187,6 +187,33 @@ export function getHTML() {
   .cfg-msg.ok{display:block;background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)}
   .cfg-msg.err{display:block;background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25)}
   .cfg-msg.info{display:block;background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.25)}
+  /* ── Virtuell Tab ── */
+  #virtView{height:100%;overflow-y:auto;padding:20px;display:none}
+  #virtView.active{display:block}
+  .virt-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  .v-toggle{display:flex;background:var(--sur2);border:1px solid var(--brd);border-radius:8px;overflow:hidden}
+  .v-tog-btn{background:none;border:none;cursor:pointer;font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 18px;transition:all .15s}
+  .v-tog-btn.active{background:var(--amber);color:#000}
+  .v-pp-btn{background:var(--sur2);border:1px solid var(--brd);border-radius:8px;cursor:pointer;font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--txt);padding:8px 16px;display:flex;align-items:center;gap:6px;transition:all .15s}
+  .v-pp-btn.paused{border-color:var(--amber);color:var(--amber)}
+  .v-clr-btn{margin-left:auto;background:none;border:1px solid var(--brd);border-radius:8px;cursor:pointer;font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 14px;transition:all .15s}
+  .v-clr-btn:hover{border-color:var(--red);color:var(--red)}
+  .bon-list{display:flex;flex-direction:column;gap:14px;max-width:440px}
+  .bon-card{background:#f5f4ef;border-radius:8px 8px 2px 2px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.4);animation:bonPop .3s ease}
+  @keyframes bonPop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+  .bon-head{background:#e8e5dd;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed #ccc}
+  .bon-meta{display:flex;flex-direction:column;gap:2px}
+  .bon-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.04em;align-self:flex-start}
+  .bon-badge.in{background:#dcfce7;color:#166534}
+  .bon-badge.out{background:#dbeafe;color:#1e40af}
+  .bon-time{font-family:var(--mono);font-size:10px;color:#888}
+  .bon-del{background:none;border:none;cursor:pointer;color:#bbb;font-size:16px;line-height:1;padding:0 4px;transition:color .15s}
+  .bon-del:hover{color:#ef4444}
+  .bon-body{padding:12px 16px;font-family:'Courier New',monospace;font-size:12px;color:#333;line-height:1.7;background:#f9f8f4}
+  .bon-item{font-size:15px;font-weight:700;color:#111;padding:1px 0}
+  .bon-small{color:#888;font-size:11px}
+  .bon-cut{height:6px;background:repeating-linear-gradient(90deg,#ddd 0 5px,transparent 5px 10px)}
+  .v-empty{color:var(--muted);font-size:14px;padding:40px;text-align:center;border:1px dashed var(--brd);border-radius:8px;max-width:440px}
   /* ── Virtual Printer ── */
   #vp-view{display:none;flex-direction:column;height:100%;overflow:hidden}
   #vp-view.active{display:flex}
@@ -924,6 +951,78 @@ async function prt(id){
 async function don(id){await fetch('/api/tickets/'+id+'/done',{method:'POST'});await Promise.all([loadT(),loadTot()]);}
 
 init();
+
+// ═══════════════════════════════════════════════════════
+//  VIRTUELL TAB – Bon-Log
+// ═══════════════════════════════════════════════════════
+let vMode = 'incoming';
+let vPaused = false;
+
+async function vTogglePause() {
+  vPaused = !vPaused;
+  await fetch('/api/pause-state',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':API_KEY},body:JSON.stringify({paused:vPaused})}).catch(()=>{});
+  vRenderPause();
+}
+function vRenderPause() {
+  document.getElementById('vPpIcon').textContent = vPaused ? '⏸' : '▶';
+  document.getElementById('vPpLabel').textContent = vPaused ? 'PAUSIERT' : 'LÄUFT';
+  document.getElementById('vPpBtn').classList.toggle('paused', vPaused);
+}
+function vSetMode(m) {
+  vMode = m;
+  document.getElementById('vBtnIn').classList.toggle('active', m === 'incoming');
+  document.getElementById('vBtnOut').classList.toggle('active', m === 'outgoing');
+  vLoadBons();
+}
+async function vDeleteBon(id) {
+  await fetch('/api/bon-log',{method:'DELETE',headers:{'Content-Type':'application/json','X-API-Key':API_KEY},body:JSON.stringify({id})}).catch(()=>{});
+  vLoadBons();
+}
+async function vClearAll() {
+  if(!confirm('Alle '+(vMode==='incoming'?'eingehenden':'ausgehenden')+' Bons löschen?')) return;
+  await fetch('/api/bon-log',{method:'DELETE',headers:{'Content-Type':'application/json','X-API-Key':API_KEY},body:JSON.stringify({type:vMode})}).catch(()=>{});
+  vLoadBons();
+}
+function vRenderPreview(preview) {
+  if(!preview) return '<span class="bon-small">–</span>';
+  return preview.split('\n').filter(l=>l.trim()).map(l=>{
+    if(l.startsWith('## ')) {
+      const txt = l.slice(3).trim();
+      const m = txt.match(/^(\d+)[x×]?\s+(.+)$/) || txt.match(/^(\d+)\s+(.+)$/);
+      if(m) return '<div class="bon-item">'+m[1]+'× '+m[2]+'</div>';
+      return '<div class="bon-item">'+txt+'</div>';
+    }
+    return '<div class="bon-small">'+l+'</div>';
+  }).join('');
+}
+async function vLoadBons() {
+  try {
+    const res = await fetch('/api/bon-log?type='+vMode+'&limit=3');
+    const bons = await res.json();
+    const list = document.getElementById('vBonList');
+    if(!bons||!bons.length){
+      list.innerHTML='<div class="v-empty">Keine '+(vMode==='incoming'?'eingehenden':'ausgehenden')+' Bons</div>';return;
+    }
+    list.innerHTML = bons.map(bon=>{
+      const time = bon.created_at ? new Date(bon.created_at).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '–';
+      const badge = vMode==='incoming'?'<span class="bon-badge in">EINGANG</span>':'<span class="bon-badge out">AUSGANG</span>';
+      return '<div class="bon-card">'+
+        '<div class="bon-head">'+
+          '<div class="bon-meta">'+badge+'<span class="bon-time">'+time+'</span></div>'+
+          '<button class="bon-del" onclick="vDeleteBon('+bon.id+')">✕</button>'+
+        '</div>'+
+        '<div class="bon-body">'+vRenderPreview(bon.preview)+'</div>'+
+        '<div class="bon-cut"></div>'+
+      '</div>';
+    }).join('');
+  } catch(e){document.getElementById('vBonList').innerHTML='<div class="v-empty">Fehler</div>';}
+}
+async function vInit() {
+  try{const r=await fetch('/api/pause-state');const d=await r.json();vPaused=d.paused||false;vRenderPause();}catch(e){}
+}
+vInit();
+setInterval(()=>{ if(S.view==='virtuell') vLoadBons(); },5000);
+
 </script>
 </body>
 </html>`;
