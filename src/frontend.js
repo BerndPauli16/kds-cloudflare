@@ -154,6 +154,12 @@ export function getHTML() {
   .move-btn:hover{background:rgba(0,0,0,.5);color:#fff}
   .move-btn.left{left:6px}
   .move-btn.right{right:6px}
+  .printer-ip-wrap{display:flex;align-items:center;gap:4px}
+  .pip-lbl{font-size:16px;line-height:1}
+  .pip-inp{background:var(--bg);border:1px solid var(--brd);color:var(--txt);font-family:var(--mono);font-size:12px;padding:4px 7px;border-radius:5px;width:110px;outline:none}
+  .pip-inp:focus{border-color:var(--amber)}
+  .pip-btn{background:transparent;border:1px solid var(--brd);color:var(--muted);padding:4px 7px;border-radius:5px;cursor:pointer;font-size:13px;transition:all .15s}
+  .pip-btn:hover{border-color:var(--green);color:var(--green)}
   ::-webkit-scrollbar{width:5px;height:5px}
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
@@ -192,6 +198,12 @@ export function getHTML() {
       </button>
     </div>
     <div class="div"></div>
+    <div class="printer-ip-wrap">
+      <label class="pip-lbl">🖨</label>
+      <input class="pip-inp" id="pipInp" type="text" placeholder="192.168.x.x" maxlength="15" spellcheck="false">
+      <button class="pip-btn" onclick="savePrinterIp()">&#10003;</button>
+    </div>
+    <div class="div"></div>
     <div class="theme-wrap" onclick="toggleTheme()">
       <div class="theme-track"><div class="theme-thumb"></div></div>
       <span class="theme-lbl" id="tLbl">DUNKEL</span>
@@ -216,6 +228,18 @@ export function getHTML() {
 <script>
 const S={view:'orders',tickets:[],totals:[],ws:null,prev:{},sel:{}};
 let curRot='landscape';
+
+async function savePrinterIp(){
+  const ip=document.getElementById("pipInp").value.trim();
+  if(!ip)return;
+  const btn=document.querySelector(".pip-btn");
+  btn.textContent="…";
+  try{
+    await fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json","X-API-Key":"kds-smarte-events-2026"},body:JSON.stringify({printerIp:ip})});
+    btn.textContent="✓";btn.style.color="var(--green)";
+    setTimeout(()=>{btn.textContent="✓";btn.style.color="";},2000);
+  }catch(e){btn.textContent="✗";}
+}
 
 function toggleTheme(){
   const n=document.documentElement.dataset.theme==='dark'?'light':'dark';
@@ -243,12 +267,16 @@ window.addEventListener('resize',applyT);
 (()=>{const s=localStorage.getItem('kr')||'landscape';rot(s);})();
 
 (()=>{
+  fetch('/api/config').then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
+
   fetch('/api/agent').then(r=>r.json()).then(d=>{
     if(d&&d.hostname) document.getElementById('mHost').textContent=d.hostname;
     if(d&&d.ip)       document.getElementById('mIp').textContent=d.ip;
   }).catch(()=>{ document.getElementById('mHost').textContent='schankmonitor'; });
   setInterval(()=>{
-    fetch('/api/agent').then(r=>r.json()).then(d=>{
+    fetch('/api/config').then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
+
+  fetch('/api/agent').then(r=>r.json()).then(d=>{
       if(d&&d.hostname) document.getElementById('mHost').textContent=d.hostname;
       if(d&&d.ip)       document.getElementById('mIp').textContent=d.ip;
     }).catch(()=>{});
