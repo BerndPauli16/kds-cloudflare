@@ -375,7 +375,7 @@ async function pollJobs() {
 
 if (CFG.workerUrl && CFG.apiKey) {
   loadRemoteConfig();
-  setInterval(loadRemoteConfig, 60000);
+  setInterval(loadRemoteConfig, 5000);
   console.log(`[POLLER] Startet – alle 3s`);
   pollJobs();
   setInterval(pollJobs, 3000);
