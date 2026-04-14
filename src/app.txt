@@ -284,7 +284,7 @@ async function vpLoad(){
           if(m) return '<div class="bon-item2">'+m[1]+'&times; '+m[2]+'</div>';
           return '<div class="bon-item2">'+txt2+'</div>';
         }
-        if(l.indexOf('TISCH:')===0) return '<div class="bon-tisch"><b>Tisch '+l.replace('TISCH:','').trim()+'</b></div>';
+        if(l.indexOf('TISCH:')===0){var tn=l.replace('TISCH:','').trim();return '<div class="bon-tisch"><b>Tisch '+tn+'</b></div>';}
         if(l.indexOf('EINGANG:')===0) return '<div class="bon-zeit in-zeit">&#128229; '+l.replace('EINGANG:','').trim()+'</div>';
         if(l.indexOf('DAUER:')===0) return '<div class="bon-zeit dauer-zeit">&#9201; '+l.replace('DAUER:','').trim()+'</div>';
         if(l.indexOf('GEDRUCKT:')===0) return '<div class="bon-zeit out-zeit">&#128228; '+l.replace('GEDRUCKT:','').trim()+'</div>';
