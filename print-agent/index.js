@@ -620,7 +620,9 @@ async function pollJobs() {
             durationMin = Math.round((now - inDate) / 60000);
           }
           var items = (job.payload.items||[]).map(function(i){ return '## ' + i.quantity + 'x  ' + i.product_name; }).join(NL);
+          var tisch = job.payload.table_number ? 'Tisch ' + job.payload.table_number : '';
           var outPreview = 
+            (tisch ? 'TISCH: ' + job.payload.table_number + NL : '') +
             'EINGANG: ' + (incomingTime || '?') + NL +
             'DAUER: ' + durationMin + ' min' + NL +
             '---' + NL +
