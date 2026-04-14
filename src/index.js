@@ -3,6 +3,7 @@
 // ════════════════════════════════════════════════
 import { KDSRoom }    from './kds-room.js';
 import { getHTML }    from './frontend.js';
+import appJs from './app.txt';
 import { getPrinterHTML } from './printer.js';
 
 export { KDSRoom };
@@ -31,9 +32,9 @@ export default {
       return handleAPI(request, env, url, method);
     }
 
-    // /app.js - JavaScript als separate Datei (text_blob)
+    // /app.js - JavaScript als separate Datei
     if (url.pathname === '/app.js') {
-      return new Response(env.APP_JS, {
+      return new Response(appJs, {
         headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' },
       });
     }
