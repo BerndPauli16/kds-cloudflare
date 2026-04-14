@@ -370,6 +370,18 @@ export function getHTML() {
     </div>
     <div class="modal-body">
       <div class="cfg-section">
+        <div class="cfg-sec-title">🏷 Anzeigename</div>
+        <div class="cfg-field">
+          <label class="cfg-lbl">Name im Header</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="cfgDisplayName" class="cfg-input" style="flex:1"
+              placeholder="z.B. küchenmonitor" maxlength="30">
+            <button class="btn-save" onclick="saveDisplayName()" style="padding:6px 14px;font-size:12px">💾 Speichern</button>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Wird im Header statt des Domain-Namens angezeigt</div>
+        </div>
+      </div>
+      <div class="cfg-section">
         <div class="cfg-sec-title">📥 Eingehender Drucker (Raspberry Pi)</div>
         <div class="cfg-field" style="margin-bottom:10px">
           <label class="cfg-lbl">Pi IP-Adresse <span style="color:var(--amber);font-size:9px;letter-spacing:.04em">(fix im Router vergeben)</span></label>
