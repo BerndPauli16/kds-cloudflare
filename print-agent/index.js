@@ -89,6 +89,9 @@ const httpServer = http.createServer((req, res) => {
 
     // Druck-Anfrage (POST mit XML)
     console.log(`[ePOS] Druckjob empfangen (${body.length} bytes)`);
+    // XML für Parser-Debug loggen
+    const xmlPreview = body.replace(/\s+/g, ' ').substring(0, 1200);
+    console.log('[ePOS] XML:', xmlPreview);
     // XML für Debugging loggen (erste 800 Zeichen)
     console.log('[ePOS] XML:', body.substring(0, 800));
 
