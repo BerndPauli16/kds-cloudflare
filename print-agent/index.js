@@ -142,10 +142,35 @@ const httpServer = http.createServer((req, res) => {
     res.writeHead(200, { ...CORS_HEADERS, 'Content-Type': 'text/xml; charset=utf-8', 'Content-Length': Buffer.byteLength(soapResp), 'Connection': 'close' });
     res.end(soapResp);
 
-    // Nur noch KDS Worker — kein automatischer Druck mehr!
+    // Einkommenden Bon loggen + KDS Worker (wenn nicht paused)
     setImmediate(async () => {
+      // Bon-Preview generieren
+      const xmlLines = (body.match(/<text[^>]*>([\s\S]*?)<\/text>/gi)||[])
+        .map(m => m.replace(/<[^>]+>/g,'').replace(/&#10;/g,'').trim())
+        .filter(l => l.length > 0);
+      // Große Texte markieren (width="2")
+      const preview = (body.match(/<text[^>]*width="2"[^>]*>([\s\S]*?)<\/text>/gi)||[]).length > 0
+        ? (body.match(/<text[^>]*>([\s\S]*?)<\/text>/gi)||[]).map(m => {
+            const big = /width="2"/.test(m);
+            const txt = m.replace(/<[^>]+>/g,'').replace(/&#10;/g,'').trim();
+            return txt ? (big ? '## ' + txt : txt) : null;
+          }).filter(Boolean).join('\n')
+        : xmlLines.join('\n');
+
       if (CFG.workerUrl) {
-        parseAndForward(Buffer.from(body)).catch(e => console.error('[PARSER]', e.message));
+        // Einkommenden Bon speichern
+        fetch(`${CFG.workerUrl}/api/bon-log`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-API-Key': CFG.apiKey },
+          body: JSON.stringify({ type: 'incoming', preview })
+        }).catch(() => {});
+
+        // KDS nur wenn nicht pausiert
+        if (!CFG.paused) {
+          parseAndForward(Buffer.from(body)).catch(e => console.error('[PARSER]', e.message));
+        } else {
+          console.log('[PAUSE] Bon empfangen aber KDS pausiert – nicht weitergeleitet');
+        }
       }
     });
   });
@@ -574,6 +599,16 @@ async function pollJobs() {
           headers: { 'X-API-Key': CFG.apiKey },
         });
         console.log(`[JOB ${job.id}] ✓ Gedruckt`);
+        // Ausgehenden Bon loggen
+        if (CFG.workerUrl && job.payload) {
+          const items = (job.payload.items||[]).map(i => `## ${i.quantity}x  ${i.product_name}`).join('\n');
+          const outPreview = `## Tisch ${job.payload.table_number||'–'}\n## Bon #${job.payload.ticket_number||'?'}\n\n${items}`;
+          fetch(`${CFG.workerUrl}/api/bon-log`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-API-Key': CFG.apiKey },
+            body: JSON.stringify({ type: 'outgoing', preview: outPreview })
+          }).catch(() => {});
+        }
       } catch (e) {
         console.error(`[JOB ${job.id}] ✗ Fehler:`, e.message);
       }
