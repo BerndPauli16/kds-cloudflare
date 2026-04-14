@@ -279,11 +279,15 @@ async function vpLoad(){
       var lines=(b.preview||'').split(NL).filter(function(l){return l.trim();});
       var itemsHtml=lines.map(function(l){
         if(l.indexOf('## ')===0){
-          var txt=l.slice(3).trim();
-          var m=txt.match(/(\d+)[x]?\s+(.+)/);
+          var txt2=l.slice(3).trim();
+          var m=txt2.match(/(\d+)[x]?\s+(.+)/);
           if(m) return '<div class="bon-item2">'+m[1]+'&times; '+m[2]+'</div>';
-          return '<div class="bon-item2">'+txt+'</div>';
+          return '<div class="bon-item2">'+txt2+'</div>';
         }
+        if(l.indexOf('EINGANG:')===0) return '<div class="bon-zeit in-zeit">&#128229; '+l.replace('EINGANG:','').trim()+'</div>';
+        if(l.indexOf('DAUER:')===0) return '<div class="bon-zeit dauer-zeit">&#9201; '+l.replace('DAUER:','').trim()+'</div>';
+        if(l.indexOf('GEDRUCKT:')===0) return '<div class="bon-zeit out-zeit">&#128228; '+l.replace('GEDRUCKT:','').trim()+'</div>';
+        if(l==='---') return '<hr style="border:none;border-top:1px dashed #ccc;margin:4px 0">';
         return '<div class="bon-small2">'+l+'</div>';
       }).join('');
       var badge=VP.type==='in'?'<span class="bon-badge2 in">EINGANG</span>':'<span class="bon-badge2 out">AUSGANG</span>';
