@@ -16,6 +16,7 @@ const CFG = {
   workerUrl:    (process.env.KDS_WORKER_URL  || '').replace(/\/$/, ''),
   apiKey:       process.env.KDS_API_KEY      || '',
   stationId:    parseInt(process.env.KDS_STATION_ID) || 1,
+  charsPerLine: 42,
 };
 
 let jobCounter = 0;
@@ -393,7 +394,7 @@ function escBuf(...bytes) { return Buffer.from(bytes); }
 function buildTicketBuffer(p) {
   const parts = [];
 
-  const line  = () => parts.push(Buffer.from('--------------------------------\n'));
+  const line  = () => parts.push(Buffer.from('-'.repeat(Math.min(CFG.charsPerLine, 48)) + '\n'));
   const br    = () => parts.push(Buffer.from('\n'));
   const txt   = (s) => parts.push(Buffer.from(s + '\n', 'utf8'));
 
@@ -486,9 +487,11 @@ async function loadRemoteConfig() {
     const res = await fetch(`${CFG.workerUrl}/api/config`);
     const d = await res.json();
     if (d && d.printerIp && d.printerIp !== CFG.printerIp) {
-      console.log(`[CONFIG] Drucker-IP aktualisiert: ${CFG.printerIp} -> ${d.printerIp}`);
+      console.log(`[CONFIG] Drucker-IP: ${CFG.printerIp} → ${d.printerIp}`);
       CFG.printerIp = d.printerIp;
     }
+    if (d && d.printerPort) CFG.printerPort = d.printerPort;
+    if (d && d.charsPerLine) CFG.charsPerLine = d.charsPerLine;
   } catch(e) {}
 }
 
