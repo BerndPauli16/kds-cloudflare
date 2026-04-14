@@ -141,17 +141,11 @@ const httpServer = http.createServer((req, res) => {
     res.writeHead(200, { ...CORS_HEADERS, 'Content-Type': 'text/xml; charset=utf-8', 'Content-Length': Buffer.byteLength(soapResp), 'Connection': 'close' });
     res.end(soapResp);
 
-    // Drucken + KDS asynchron (nach Response)
+    // Nur noch KDS Worker — kein automatischer Druck mehr!
+    // Gedruckt wird per DRUCKEN-Button im KDS Monitor.
     setImmediate(async () => {
-      try {
-        const escBuf = eposXmlToEscpos(body);
-        await sendToPrinterRaw(escBuf);
-        console.log(`[ePOS] ✓ Gedruckt (${escBuf.length} bytes)`);
-        if (CFG.workerUrl) {
-          parseAndForward(Buffer.from(body)).catch(e => console.error('[PARSER]', e.message));
-        }
-      } catch(e) {
-        console.error('[ePOS] Druckfehler:', e.message);
+      if (CFG.workerUrl) {
+        parseAndForward(Buffer.from(body)).catch(e => console.error('[PARSER]', e.message));
       }
     });
   });
