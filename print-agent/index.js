@@ -89,6 +89,8 @@ const httpServer = http.createServer((req, res) => {
 
     // Druck-Anfrage (POST mit XML)
     console.log(`[ePOS] Druckjob empfangen (${body.length} bytes)`);
+    // XML für Debugging loggen (erste 800 Zeichen)
+    console.log('[ePOS] XML:', body.substring(0, 800));
 
     // SOFORT antworten – asello nicht warten lassen
     const soapResp = '<?xml version="1.0" encoding="utf-8"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><response xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print" success="true" code="SUCCESS" status="1814789376" battery="0"/></SOAP-ENV:Body></SOAP-ENV:Envelope>';
