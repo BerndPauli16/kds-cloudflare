@@ -130,6 +130,8 @@ export function getHTML() {
   .pgn{font-size:14px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt);flex:1;line-height:1.25;word-break:break-word;padding-right:50px;padding-top:2px}
   .pgt{font-family:var(--mono);font-size:48px;font-weight:700;color:var(--amber);line-height:1;position:absolute;top:8px;right:10px}
   .prs{padding:4px 0;flex:1}
+  .pg-footer{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:rgba(0,0,0,.15);border-top:1px solid rgba(255,255,255,.08);min-height:30px}
+  .pg-footer-center{display:flex;align-items:center;gap:6px}
   .pr{display:grid;grid-template-columns:1fr 50px;align-items:center;padding:7px 16px;border-bottom:1px solid var(--brd)}
   .pr:last-child{border-bottom:none}
   .pr-tbl{font-size:15px;font-weight:500;color:var(--txt)}
@@ -142,8 +144,8 @@ export function getHTML() {
   .empty-i{font-size:52px} .empty-t{font-size:19px;font-weight:600;letter-spacing:.8px}
 
   .pin-btn{position:absolute;top:6px;left:6px;background:transparent;border:none;cursor:pointer;opacity:.25;font-size:14px;transition:opacity .2s;padding:2px;line-height:1;z-index:2}
-  .pin-btn:hover{opacity:.9}
-  .pin-btn.pinned{opacity:1}
+  .pin-btn:hover{opacity:1;transform:scale(1.2)}
+  .pin-btn.pinned{opacity:1;filter:drop-shadow(0 0 3px var(--amber))}
   .color-btn{position:absolute;top:7px;left:28px;width:15px;height:15px;border-radius:50%;border:2px solid rgba(255,255,255,.3);cursor:pointer;z-index:2;transition:transform .15s}
   .color-btn:hover{transform:scale(1.2)}
   .color-inp{position:absolute;opacity:0;width:0;height:0}
@@ -152,8 +154,8 @@ export function getHTML() {
   .pg.zero{opacity:.45}
   .move-btn{position:absolute;bottom:6px;background:rgba(0,0,0,.25);border:none;color:rgba(255,255,255,.7);font-size:7px;cursor:pointer;padding:2px 5px;border-radius:3px;transition:all .15s;z-index:2;width:22px;text-align:center}
   .move-btn:hover{background:rgba(0,0,0,.5);color:#fff}
-  .move-btn.left{left:6px}
-  .move-btn.right{right:6px}
+  .move-btn.left{}
+  .move-btn.right{}
   /* ── Konfig-Button ── */
   .cfg-btn{background:none;border:none;cursor:pointer;color:var(--muted);padding:6px;border-radius:6px;transition:all .2s;display:flex;align-items:center}
   .cfg-btn:hover{background:var(--sur2);color:var(--txt)}
