@@ -717,14 +717,14 @@ function vRenderPreview(preview) {
 // ═══════════════════════════════════════════════════════
 //  BESTELLVERLAUF
 // ═══════════════════════════════════════════════════════
-var HIST = { kellner: null };
+var HIST = { kellner: null, tisch: null };
 
 async function histLoad() {
   var list = document.getElementById('histList');
   if(!list) return;
   list.innerHTML = '<div class="hist-empty">Lade…</div>';
   try {
-    var url = '/api/history?limit=100' + (HIST.kellner ? '&kellner=' + encodeURIComponent(HIST.kellner) : '');
+    var url = '/api/history?limit=100' + (HIST.tisch ? '&tisch=' + encodeURIComponent(HIST.tisch) : (HIST.kellner ? '&kellner=' + encodeURIComponent(HIST.kellner) : ''));
     var r = await fetch(url);
     var d = await r.json();
     // Kellner-Buttons rendern
