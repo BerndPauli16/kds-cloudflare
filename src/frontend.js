@@ -154,7 +154,39 @@ export function getHTML() {
   .move-btn:hover{background:rgba(0,0,0,.5);color:#fff}
   .move-btn.left{left:6px}
   .move-btn.right{right:6px}
-  .printer-ip-wrap{display:flex;align-items:center;gap:4px}
+  /* ── Konfig-Button ── */
+  .cfg-btn{background:none;border:none;cursor:pointer;color:var(--muted);padding:6px;border-radius:6px;transition:all .2s;display:flex;align-items:center}
+  .cfg-btn:hover{background:var(--sur2);color:var(--txt)}
+  /* ── Modal ── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+  .modal-overlay.open{opacity:1;pointer-events:all}
+  .modal{background:var(--sur);border:1px solid var(--brd);border-radius:12px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;transform:translateY(12px);transition:transform .25s;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .modal-overlay.open .modal{transform:translateY(0)}
+  .modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid var(--brd);position:sticky;top:0;background:var(--sur);z-index:1}
+  .modal-title{font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+  .modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:4px 8px;border-radius:4px;transition:color .15s}
+  .modal-close:hover{color:var(--txt)}
+  .modal-body{padding:20px 22px}
+  .cfg-section{margin-bottom:22px}
+  .cfg-sec-title{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .cfg-sec-title::after{content:'';flex:1;height:1px;background:var(--brd)}
+  .cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .cfg-field{display:flex;flex-direction:column;gap:5px}
+  .cfg-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .cfg-inp{background:var(--sur2);border:1px solid var(--brd);border-radius:6px;padding:8px 10px;color:var(--txt);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .15s;width:100%}
+  .cfg-inp:focus{border-color:var(--blue)}
+  .cfg-preview{background:var(--sur2);border:1px solid var(--brd);border-radius:6px;padding:8px 10px;font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:6px}
+  .cfg-footer{display:flex;gap:10px;padding-top:4px}
+  .btn-save{background:var(--blue);color:#fff;border:none;border-radius:6px;padding:9px 20px;font-family:var(--font);font-weight:700;font-size:12px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;gap:6px}
+  .btn-save:hover{opacity:.85}
+  .btn-cancel{background:var(--sur2);color:var(--txt);border:1px solid var(--brd);border-radius:6px;padding:9px 16px;font-family:var(--font);font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:all .15s}
+  .btn-cancel:hover{border-color:var(--brd2)}
+  .btn-test{background:var(--sur2);color:var(--txt);border:1px solid var(--brd);border-radius:6px;padding:7px 12px;font-family:var(--font);font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:all .15s;white-space:nowrap}
+  .btn-test:hover{border-color:var(--amber);color:var(--amber)}
+  .cfg-msg{font-size:11px;padding:7px 10px;border-radius:5px;margin-top:10px;display:none}
+  .cfg-msg.ok{display:block;background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)}
+  .cfg-msg.err{display:block;background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25)}
+  .cfg-msg.info{display:block;background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.25)}
   .pip-lbl{font-size:16px;line-height:1}
   .pip-inp{background:var(--bg);border:1px solid var(--brd);color:var(--txt);font-family:var(--mono);font-size:12px;padding:4px 7px;border-radius:5px;width:140px;outline:none}
   .pip-inp:focus{border-color:var(--amber)}
@@ -203,11 +235,11 @@ export function getHTML() {
       <span class="theme-lbl" id="tLbl">DUNKEL</span>
     </div>
     <div class="div"></div>
-    <div class="printer-ip-wrap">
-      <label class="pip-lbl">🖨</label>
-      <input class="pip-inp" id="pipInp" type="text" placeholder="192.168.x.x" maxlength="15" spellcheck="false">
-      <button class="pip-btn" onclick="savePrinterIp()">&#10003;</button>
-    </div>
+    <button class="cfg-btn" onclick="openCfg()" title="Drucker-Konfiguration">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
     <div class="tabs">
       <button class="tab active" id="tO" onclick="sv('orders')">Bestellungen</button>
       <button class="tab"        id="tP" onclick="sv('products')">Produkte</button>
@@ -225,21 +257,156 @@ export function getHTML() {
   </div>
 </div>
 
+<!-- Drucker-Konfigurations-Modal -->
+<div class="modal-overlay" id="cfgModal" onclick="if(event.target===this)closeCfg()">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">⚙ Drucker-Konfiguration</span>
+      <button class="modal-close" onclick="closeCfg()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="cfg-section">
+        <div class="cfg-sec-title">📥 Eingehender Drucker (Proxy)</div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <label class="cfg-lbl">Pi IP-Adresse</label>
+            <input class="cfg-inp" id="cfgProxyIp" placeholder="192.168.192.70" oninput="updateProxyPreview()">
+          </div>
+          <div class="cfg-field">
+            <label class="cfg-lbl">Proxy Port</label>
+            <input class="cfg-inp" id="cfgProxyPort" placeholder="8009" type="number" oninput="updateProxyPreview()">
+          </div>
+        </div>
+        <div class="cfg-preview" id="proxyPreview">http://192.168.192.70 → :8009</div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-sec-title">📤 Ausgehender Drucker (Physisch)</div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <label class="cfg-lbl">Drucker IP-Adresse</label>
+            <input class="cfg-inp" id="cfgPrinterIp" placeholder="192.168.192.202">
+          </div>
+          <div class="cfg-field">
+            <label class="cfg-lbl">Drucker Port</label>
+            <input class="cfg-inp" id="cfgPrinterPort" placeholder="9100" type="number">
+          </div>
+        </div>
+        <div class="cfg-grid" style="margin-top:10px">
+          <div class="cfg-field">
+            <label class="cfg-lbl">Zeichen pro Zeile</label>
+            <input class="cfg-inp" id="cfgChars" placeholder="42" type="number" min="20" max="80" oninput="updateCplPreview()">
+          </div>
+          <div class="cfg-field">
+            <label class="cfg-lbl">&nbsp;</label>
+            <button class="btn-test" id="testBtn" onclick="doTestPrint()">🖨 Testdruck</button>
+          </div>
+        </div>
+        <div class="cfg-lbl" style="margin-top:8px;margin-bottom:4px">Vorschau Zeilenbreite</div>
+        <div class="cfg-preview" id="cplPreview" style="font-size:10px">1234567890</div>
+      </div>
+
+      <div class="cfg-footer">
+        <button class="btn-save" onclick="saveCfg()">✓ Speichern</button>
+        <button class="btn-cancel" onclick="closeCfg()">Abbrechen</button>
+      </div>
+      <div class="cfg-msg" id="cfgMsg"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 const S={view:'orders',tickets:[],totals:[],ws:null,prev:{},sel:{}};
 let curRot='landscape';
 
-async function savePrinterIp(){
-  const ip=document.getElementById("pipInp").value.trim();
-  if(!ip)return;
-  const btn=document.querySelector(".pip-btn");
-  btn.textContent="…";
-  try{
-    await fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json","X-API-Key":"kds-smarte-events-2026"},body:JSON.stringify({printerIp:ip})});
-    btn.textContent="✓";btn.style.color="var(--green)";
-    setTimeout(()=>{btn.textContent="✓";btn.style.color="";},2000);
-  }catch(e){btn.textContent="✗";}
+// ─── Drucker-Konfiguration ───────────────────────────────────────────────
+const API_KEY = 'kds-smarte-events-2026';
+
+function openCfg() {
+  fetch('/api/config').then(r=>r.json()).then(cfg => {
+    document.getElementById('cfgProxyIp').value    = cfg.proxyIp      || '192.168.192.70';
+    document.getElementById('cfgProxyPort').value  = cfg.proxyPort    || '8009';
+    document.getElementById('cfgPrinterIp').value  = cfg.printerIp    || '192.168.192.202';
+    document.getElementById('cfgPrinterPort').value= cfg.printerPort  || '9100';
+    document.getElementById('cfgChars').value      = cfg.charsPerLine || '42';
+    updateProxyPreview(); updateCplPreview();
+    document.getElementById('cfgModal').classList.add('open');
+  }).catch(() => {
+    document.getElementById('cfgModal').classList.add('open');
+    updateCplPreview();
+  });
 }
+
+function closeCfg() {
+  document.getElementById('cfgModal').classList.remove('open');
+  cfgMsg('', '');
+}
+
+function updateProxyPreview() {
+  const ip = document.getElementById('cfgProxyIp').value || '192.168.192.70';
+  const port = document.getElementById('cfgProxyPort').value || '8009';
+  document.getElementById('proxyPreview').textContent = `asello → http://${ip}:80 → Pi:${port}`;
+}
+
+function updateCplPreview() {
+  const n = parseInt(document.getElementById('cfgChars').value) || 42;
+  const nums = '1234567890';
+  document.getElementById('cplPreview').textContent = (nums.repeat(10)).substring(0, n) + ' (' + n + ')';
+}
+
+function cfgMsg(text, type) {
+  const el = document.getElementById('cfgMsg');
+  el.textContent = text;
+  el.className = 'cfg-msg' + (type ? ' ' + type : '');
+}
+
+async function saveCfg() {
+  const body = {
+    proxyIp:     document.getElementById('cfgProxyIp').value.trim(),
+    proxyPort:   parseInt(document.getElementById('cfgProxyPort').value) || 8009,
+    printerIp:   document.getElementById('cfgPrinterIp').value.trim(),
+    printerPort: parseInt(document.getElementById('cfgPrinterPort').value) || 9100,
+    charsPerLine:parseInt(document.getElementById('cfgChars').value) || 42,
+  };
+  try {
+    const res = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      cfgMsg('✓ Gespeichert!', 'ok');
+      setTimeout(closeCfg, 1200);
+    } else {
+      cfgMsg('Fehler beim Speichern', 'err');
+    }
+  } catch(e) { cfgMsg('Netzwerkfehler: ' + e.message, 'err'); }
+}
+
+async function doTestPrint() {
+  const btn = document.getElementById('testBtn');
+  btn.textContent = '⏳ Drucke…';
+  btn.disabled = true;
+  cfgMsg('Testdruck wird gesendet…', 'info');
+  try {
+    const res = await fetch('/api/test-print', {
+      method: 'POST',
+      headers: { 'X-API-Key': API_KEY }
+    });
+    const data = await res.json();
+    if (data.ok) {
+      cfgMsg('✓ Testdruck erfolgreich! Zeichen zählen und Zahl eintragen.', 'ok');
+    } else {
+      cfgMsg('Fehler: ' + (data.error || 'Unbekannt'), 'err');
+    }
+  } catch(e) {
+    cfgMsg('Fehler: ' + e.message, 'err');
+  } finally {
+    btn.textContent = '🖨 Testdruck';
+    btn.disabled = false;
+  }
+}
+
 
 function toggleTheme(){
   const n=document.documentElement.dataset.theme==='dark'?'light':'dark';
