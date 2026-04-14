@@ -35,7 +35,7 @@ export default {
     // /app.js - JavaScript als separate Datei
     if (url.pathname === '/app.js') {
       return new Response(appJs, {
-        headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' },
+        headers: { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' },
       });
     }
 
