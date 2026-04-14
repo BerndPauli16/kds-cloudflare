@@ -6,7 +6,6 @@ compatibility_flags = ["nodejs_compat"]
 
 # ─── Custom Domain ──────────────────────────────────────────
 routes = [
-  { pattern = "kds.team24.training", custom_domain = true },
   { pattern = "schankmonitor.team24.training", custom_domain = true }
 ]
 
