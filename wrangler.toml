@@ -1,7 +1,13 @@
 name = "kds-cloudflare"
 main = "src/index.js"
+account_id = "f1c8788eb10870b12ac498a71b81d1f3"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
+
+# ─── Custom Domain ──────────────────────────────────────────
+routes = [
+  { pattern = "kds.team24.training/*", custom_domain = true }
+]
 
 # ─── D1 Datenbank ───────────────────────────────────────────
 [[d1_databases]]
@@ -22,7 +28,7 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["KDSRoom"]   # Enterprise Plan
+new_classes = ["KDSRoom"]
 
 # ─── Secrets (via `wrangler secret put API_KEY`) ─────────────
-# API_KEY  → schützt den /api Endpunkt für den Print-Agent
+# API_KEY  → schützt den /api Endpunkt fuer den Print-Agent
