@@ -99,10 +99,13 @@ async function handleAPI(request, env, url, method) {
 
     if (path === '/agent' && method === 'POST') {
       requireApiKey(request, env);
-      const { hostname, ip } = await request.json();
+      const body = await request.json();
+      const { hostname, ip, stationId, printerIp: reportedPrinterIp } = body;
+      const agentData = { hostname, ip, stationId, updated_at: new Date().toISOString() };
+      if (reportedPrinterIp) agentData.printerIp = reportedPrinterIp;
       await env.DB.prepare(
         "INSERT INTO kv_store (key, value) VALUES ('agent_info', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
-      ).bind(JSON.stringify({ hostname, ip, updated_at: new Date().toISOString() })).run().catch(async () => {
+      ).bind(JSON.stringify(agentData)).run().catch(async () => {
         await env.DB.prepare("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)").run();
         await env.DB.prepare("INSERT INTO kv_store (key, value) VALUES ('agent_info', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify({ hostname, ip, updated_at: new Date().toISOString() })).run();
       });
