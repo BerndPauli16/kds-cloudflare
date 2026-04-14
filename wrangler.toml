@@ -5,11 +5,9 @@ compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 # ─── Custom Domain ──────────────────────────────────────────
-[env.production]
-
-[[env.production.routes]]
-pattern = "kds.team24.training"
-custom_domain = true
+routes = [
+  { pattern = "kds.team24.training", custom_domain = true }
+]
 
 # ─── D1 Datenbank ───────────────────────────────────────────
 [[d1_databases]]
