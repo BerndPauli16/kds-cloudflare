@@ -144,22 +144,12 @@ const httpServer = http.createServer((req, res) => {
 
     // Einkommenden Bon loggen + KDS Worker (wenn nicht paused)
     setImmediate(async () => {
-      // Preview aus parseEposXml bauen
+      // Kompletter Originaltext aus XML - nichts weglassen, nichts hinzufügen
       const NL = '\n';
-      const parsed = parseEposXml(body);
-      let preview = '';
-      if (parsed.items && parsed.items.length > 0) {
-        const lines = [];
-        if (parsed.tableNumber) lines.push('Tisch: ' + parsed.tableNumber);
-        if (parsed.ticketNumber) lines.push('Bon: ' + parsed.ticketNumber);
-        parsed.items.forEach(function(i) { lines.push('## ' + i.quantity + 'x ' + i.product_name); });
-        preview = lines.join(NL);
-      } else {
-        // Fallback: roher Text
-        preview = (body.match(/<text[^>]*>([\s\S]*?)<\/text>/gi)||[])
-          .map(function(m){ return m.replace(/<[^>]+>/g,'').replace(/&#10;/g,'').trim(); })
-          .filter(function(l){ return l.length > 0; }).slice(0,10).join(NL);
-      }
+      const preview = (body.match(/<text[^>]*>([\s\S]*?)<\/text>/gi)||[])
+        .map(function(m){ return m.replace(/<[^>]+>/g,'').replace(/&#10;/g,'').trim(); })
+        .filter(function(l){ return l.length > 0; })
+        .join(NL);
 
       if (CFG.workerUrl) {
         // Einkommenden Bon speichern
@@ -636,15 +626,20 @@ async function pollJobs() {
             durationMin = Math.round((now - inDate) / 60000);
           }
           var items = (job.payload.items||[]).map(function(i){ return '## ' + i.quantity + 'x  ' + i.product_name; }).join(NL);
-          var tisch = job.payload.table_number ? 'Tisch ' + job.payload.table_number : '';
-          var outPreview = 
-            (tisch ? 'TISCH: ' + job.payload.table_number + NL : '') +
-            'EINGANG: ' + (incomingTime || '?') + NL +
-            'DAUER: ' + durationMin + ' min' + NL +
-            '---' + NL +
-            items + NL +
-            '---' + NL +
-            'GEDRUCKT: ' + printTime;
+          // Kompletter Ausgehend-Bon - nichts weglassen
+          var allItems = (job.payload.all_items || job.payload.items || [])
+            .map(function(i){ return String(i.quantity).padStart(2) + 'x  ' + i.product_name; }).join(NL);
+          var outPreview =
+            (job.payload.station_name ? job.payload.station_name + NL : '') +
+            (job.payload.table_number ? 'Tisch ' + job.payload.table_number + NL : '') +
+            'Bon: #' + (job.payload.ticket_number || '?') + NL +
+            'Boniert: ' + (incomingTime || '?') + NL +
+            'Dauer: ' + durationMin + ' min' + NL +
+            (job.payload.partial ? '(Teildruck)' + NL : '') +
+            '----------------------------------------' + NL +
+            allItems + NL +
+            '----------------------------------------' + NL +
+            'Gedruckt: ' + printTime;
           console.log('[BON-LOG-OUT] Speichere:', outPreview.substring(0,80));
           fetch(CFG.workerUrl + '/api/bon-log', {
             method: 'POST',
