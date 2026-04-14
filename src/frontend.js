@@ -215,8 +215,8 @@ export function getHTML() {
   .bon-cut{height:6px;background:repeating-linear-gradient(90deg,#ddd 0 5px,transparent 5px 10px)}
   .v-empty{color:var(--muted);font-size:14px;padding:40px;text-align:center;border:1px dashed var(--brd);border-radius:8px;max-width:440px}
   /* ── Virtual Printer ── */
-  #vp-view{display:none;overflow-y:auto;height:calc(100vh - var(--hh));padding:20px}
-  #vp-view.active{display:flex}
+  #vp-view{display:none;flex-direction:column;overflow-y:auto;height:calc(100vh - var(--hh));padding:20px;width:100%}
+  #vp-view.active{display:flex;flex-direction:column}
   .vp-toolbar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--sur);border-bottom:1px solid var(--brd);flex-shrink:0}
   .vp-title{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
   .vp-seg{display:flex;background:var(--sur2);border-radius:6px;padding:2px;gap:2px}
