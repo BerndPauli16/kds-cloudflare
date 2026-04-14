@@ -157,6 +157,60 @@ async function handleAPI(request, env, url, method) {
 
     if (path === '/totals' && method === 'GET') return jsonResponse(await getTotals(env, url.searchParams.get('station')));
 
+    // ── Bon-Log: einkommende/ausgehende Bons speichern ──────────────────
+    if (path === '/bon-log' && method === 'POST') {
+      requireApiKey(request, env);
+      const b = await request.json();
+      const { type, preview, rawText } = b; // type: 'incoming'|'outgoing'
+      await env.DB.prepare(
+        "INSERT INTO bon_log (type, preview, raw_text, created_at) VALUES (?,?,?,?)"
+      ).bind(type, preview, rawText||'', new Date().toISOString())
+       .run().catch(async () => {
+         await env.DB.prepare("CREATE TABLE IF NOT EXISTS bon_log (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, preview TEXT, raw_text TEXT, created_at TEXT)").run();
+         await env.DB.prepare("INSERT INTO bon_log (type, preview, raw_text, created_at) VALUES (?,?,?,?)").bind(type, preview, rawText||'', new Date().toISOString()).run();
+       });
+      // Max 10 pro Typ behalten
+      await env.DB.prepare("DELETE FROM bon_log WHERE id NOT IN (SELECT id FROM bon_log WHERE type=? ORDER BY id DESC LIMIT 10)").bind(type).run().catch(()=>{});
+      return jsonResponse({ ok: true });
+    }
+
+    if (path === '/bon-log' && method === 'GET') {
+      const type = url.searchParams.get('type') || 'incoming';
+      const limit = parseInt(url.searchParams.get('limit')) || 3;
+      const rows = await env.DB.prepare(
+        "SELECT id, type, preview, raw_text, created_at FROM bon_log WHERE type=? ORDER BY id DESC LIMIT ?"
+      ).bind(type, limit).all().catch(() => ({ results: [] }));
+      return jsonResponse(rows.results || []);
+    }
+
+    if (path === '/bon-log' && method === 'DELETE') {
+      requireApiKey(request, env);
+      const b = await request.json().catch(() => ({}));
+      if (b.id) {
+        await env.DB.prepare("DELETE FROM bon_log WHERE id=?").bind(b.id).run().catch(()=>{});
+      } else {
+        await env.DB.prepare("DELETE FROM bon_log").run().catch(()=>{});
+      }
+      return jsonResponse({ ok: true });
+    }
+
+    // ── Pause-State ───────────────────────────────────────────────────────
+    if (path === '/pause-state' && method === 'GET') {
+      const row = await env.DB.prepare("SELECT value FROM kv_store WHERE key='pause_state'").first().catch(()=>null);
+      return jsonResponse({ paused: row ? JSON.parse(row.value).paused : false });
+    }
+
+    if (path === '/pause-state' && method === 'POST') {
+      requireApiKey(request, env);
+      const b = await request.json();
+      const val = JSON.stringify({ paused: !!b.paused });
+      await env.DB.prepare("INSERT INTO kv_store (key,value) VALUES ('pause_state',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(val).run().catch(async()=>{
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)").run();
+        await env.DB.prepare("INSERT INTO kv_store (key,value) VALUES ('pause_state',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(val).run();
+      });
+      return jsonResponse({ ok: true });
+    }
+
     if (path === '/tickets/clear' && method === 'POST') {
       requireApiKey(request, env);
       const b = await request.json().catch(() => ({}));
