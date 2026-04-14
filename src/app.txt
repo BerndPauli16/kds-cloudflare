@@ -6,7 +6,22 @@ let curRot='landscape';
 // ─── Drucker-Konfiguration ───────────────────────────────────────────────
 const API_KEY = 'kds-smarte-events-2026';
 
+function saveDisplayName() {
+  var name = document.getElementById('cfgDisplayName').value.trim();
+  if (name) {
+    localStorage.setItem('kds_display_name', name);
+    document.getElementById('mHost').textContent = name;
+  } else {
+    localStorage.removeItem('kds_display_name');
+    document.getElementById('mHost').textContent = location.hostname.split('.')[0];
+  }
+  var btn = document.querySelector('[onclick="saveDisplayName()"]');
+  if (btn) { btn.textContent = '✓ Gespeichert'; setTimeout(()=>{ btn.textContent = '💾 Speichern'; }, 1500); }
+}
 function openCfg() {
+  // Input mit aktuellem Namen befüllen
+  var inp = document.getElementById('cfgDisplayName');
+  if (inp) inp.value = localStorage.getItem('kds_display_name') || '';
   // Pi-IP vom Agent-Endpoint laden (vom Pi selbst gemeldet)
   fetch('/api/agent').then(r=>r.json()).then(agent => {
     if (agent && agent.ip) {
@@ -196,8 +211,10 @@ window.addEventListener('resize',applyT);
 (()=>{
   fetch('/api/config').then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
 
-  // Hostname sofort aus URL holen (z.B. "schankmonitor" aus schankmonitor.team24.training)
-  document.getElementById('mHost').textContent = location.hostname.split('.')[0];
+  // Anzeigename: gespeicherter Name aus localStorage oder URL-Hostname
+  var _savedName = localStorage.getItem('kds_display_name');
+  var _defaultName = location.hostname.split('.')[0];
+  document.getElementById('mHost').textContent = _savedName || _defaultName;
   // IP vom Pi nachladen
   fetch('/api/agent').then(r=>r.json()).then(d=>{
     if(d&&d.ip) document.getElementById('mIp').textContent=d.ip;
