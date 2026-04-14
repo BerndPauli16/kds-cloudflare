@@ -324,7 +324,8 @@ function parseEposXml(xmlStr) {
     while ((m = bigTextRe.exec(xmlStr)) !== null) {
       const txt = m[1].replace(/&#10;/g,'').trim();
       // Tisch-Erkennung in großen Texten: "Tisch 5", "T5", "Tisch: 5"
-      const bigTischM = txt.match(/^Tisch[:\s#]*(\d+)$/i) || txt.match(/^T\s*(\d+)$/i);
+      const bigTischM = txt.match(/^Tisch[:\s#]*(\d+)$/i) || txt.match(/^T\s*(\d+)$/i) ||
+                            txt.match(/\/\s*T\s+(\d+)/i) || txt.match(/\bT\s+(\d+)\b/);
       if (bigTischM) { tableNumber = bigTischM[1]; continue; }
       const itemM = txt.match(/^(\d+)\s+(.+)$/);
       if (itemM) {
