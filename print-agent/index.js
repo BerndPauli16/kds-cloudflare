@@ -481,9 +481,10 @@ function buildTicketBuffer(p) {
   parts.push(escBuf(ESC, 0x45, 0x00));     // Bold OFF
   parts.push(escBuf(GS,  0x21, 0x00));     // Normal
   txt(`Bon:   #${p.ticket_number}`);
-  const orderTime = new Date(p.created_at || p.printed_at || Date.now());
-  const printTime = new Date(p.printed_at || Date.now());
-  txt(`Zeit:  ${printTime.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' })}`);
+  const orderTime = new Date(p.created_at || Date.now());
+  const printTime = new Date();
+  const bonierZeit = orderTime.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  txt(`BONIERT: ${bonierZeit}`);
   line();
 
   // ── Artikel (jetzt gedruckt) ─────────────────
@@ -525,8 +526,10 @@ function buildTicketBuffer(p) {
 
   // ── Fußzeile ─────────────────────────────────
   line();
-  parts.push(escBuf(ESC, 0x61, 0x01));     // Zentriert
-  txt(`Gedruckt: ${printTime.toLocaleTimeString('de-AT')}`);
+  parts.push(escBuf(ESC, 0x61, 0x00));     // Links
+  const durationMin = Math.round((printTime - orderTime) / 60000);
+  txt(`DAUER: ${durationMin} min`);
+  txt(`BIS GEDRUCKT UM: ${printTime.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`);
   br(); br(); br();
   parts.push(escBuf(GS, 0x56, 0x42, 0x00)); // Vollschnitt
 
