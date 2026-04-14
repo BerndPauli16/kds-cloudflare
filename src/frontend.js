@@ -187,6 +187,29 @@ export function getHTML() {
   .cfg-msg.ok{display:block;background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)}
   .cfg-msg.err{display:block;background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25)}
   .cfg-msg.info{display:block;background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.25)}
+  /* ── Virtual Printer ── */
+  #vp-view{display:none;flex-direction:column;height:100%;overflow:hidden}
+  #vp-view.active{display:flex}
+  .vp-toolbar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--sur);border-bottom:1px solid var(--brd);flex-shrink:0}
+  .vp-title{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .vp-seg{display:flex;background:var(--sur2);border-radius:6px;padding:2px;gap:2px}
+  .vp-seg-btn{background:none;border:none;color:var(--muted);font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 12px;border-radius:4px;cursor:pointer;transition:all .15s}
+  .vp-seg-btn.active{background:var(--blue);color:#fff}
+  .vp-play{background:none;border:1px solid var(--brd);border-radius:6px;padding:5px 12px;color:var(--txt);font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px;margin-left:auto}
+  .vp-play.playing{border-color:var(--green);color:var(--green)}
+  .vp-play.paused{border-color:var(--amber);color:var(--amber)}
+  .vp-bons{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+  .vp-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--muted);gap:8px;font-size:13px}
+  .bon-card{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px;transition:border-color .15s}
+  .bon-card:hover{border-color:var(--brd2)}
+  .bon-card-body{flex:1;min-width:0}
+  .bon-card-hdr{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .bon-num{font-size:11px;font-weight:700;color:var(--muted);font-family:var(--mono)}
+  .bon-time{font-size:10px;color:var(--muted);margin-left:auto}
+  .bon-items{font-size:13px;font-weight:600;color:var(--txt);line-height:1.5}
+  .bon-table{font-size:10px;color:var(--muted);margin-top:3px}
+  .bon-del{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:4px;font-size:14px;transition:color .15s;flex-shrink:0}
+  .bon-del:hover{color:var(--red)}
   .pi-ip-display{user-select:none;-webkit-user-select:none;pointer-events:none;opacity:.85}
   .accordion-btn{width:100%;background:var(--sur2);border:1px solid var(--brd);border-radius:6px;padding:9px 12px;color:var(--txt);font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .15s;margin-bottom:0}
   .accordion-btn:hover{border-color:var(--brd2)}
@@ -258,6 +281,7 @@ export function getHTML() {
     <div class="tabs">
       <button class="tab active" id="tO" onclick="sv('orders')">Bestellungen</button>
       <button class="tab"        id="tP" onclick="sv('products')">Produkte</button>
+      <button class="tab"        id="tV" onclick="sv('virtual')">Virtuell</button>
     </div>
     <div class="ws-dot" id="wsDot"></div>
   </header>
@@ -269,6 +293,21 @@ export function getHTML() {
       <div class="sb-foot"><span>Offene Bons</span><strong id="totBons">0</strong></div>
     </aside>
     <div id="tickets"></div>
+    <div id="vp-view">
+      <div class="vp-toolbar">
+        <span class="vp-title">🖨 Virtueller Drucker</span>
+        <div class="vp-seg">
+          <button class="vp-seg-btn active" id="vpIn" onclick="vpType('in')">📥 Einkommend</button>
+          <button class="vp-seg-btn" id="vpOut" onclick="vpType('out')">📤 Ausgehend</button>
+        </div>
+        <button class="vp-play playing" id="vpPlay" onclick="vpTogglePlay()">
+          <span id="vpPlayIcon">▶</span><span id="vpPlayLabel">AKTIV</span>
+        </button>
+      </div>
+      <div class="vp-bons" id="vpBons">
+        <div class="vp-empty">⏳ Lade Bons…</div>
+      </div>
+    </div>
   </div>
 </div>
 
