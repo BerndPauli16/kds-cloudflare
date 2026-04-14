@@ -89,9 +89,7 @@ const httpServer = http.createServer((req, res) => {
 
     // Druck-Anfrage (POST mit XML)
     console.log(`[ePOS] Druckjob empfangen (${body.length} bytes)`);
-    // XML vollständig in Datei loggen
-    require('fs').writeFileSync('/tmp/last_epos.xml', body, 'utf8');
-    console.log('[ePOS] XML gespeichert in /tmp/last_epos.xml');
+
     // XML für Debugging loggen (erste 800 Zeichen)
     console.log('[ePOS] XML:', body.substring(0, 800));
 
