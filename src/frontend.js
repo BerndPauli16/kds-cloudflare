@@ -187,6 +187,21 @@ export function getHTML() {
   .cfg-msg.ok{display:block;background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)}
   .cfg-msg.err{display:block;background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25)}
   .cfg-msg.info{display:block;background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.25)}
+  .pi-ip-display{user-select:none;-webkit-user-select:none;pointer-events:none;opacity:.85}
+  .accordion-btn{width:100%;background:var(--sur2);border:1px solid var(--brd);border-radius:6px;padding:9px 12px;color:var(--txt);font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .15s;margin-bottom:0}
+  .accordion-btn:hover{border-color:var(--brd2)}
+  .accordion-btn .arr{transition:transform .2s;font-size:10px}
+  .accordion-btn.open .arr{transform:rotate(180deg)}
+  .accordion-body{overflow:hidden;max-height:0;transition:max-height .3s ease}
+  .accordion-body.open{max-height:400px}
+  .asello-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:11px}
+  .asello-table tr{border-bottom:1px solid var(--brd)}
+  .asello-table tr:last-child{border-bottom:none}
+  .asello-table td{padding:6px 8px}
+  .asello-table td:first-child{color:var(--muted);width:55%;font-weight:600}
+  .asello-table td:last-child{font-family:var(--mono);color:var(--txt)}
+  .asello-table .tag-on{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);border-radius:3px;padding:1px 6px;font-family:var(--font);font-size:10px;font-weight:700}
+  .asello-table .tag-off{background:var(--sur2);color:var(--muted);border:1px solid var(--brd);border-radius:3px;padding:1px 6px;font-family:var(--font);font-size:10px}
   .pip-lbl{font-size:16px;line-height:1}
   .pip-inp{background:var(--bg);border:1px solid var(--brd);color:var(--txt);font-family:var(--mono);font-size:12px;padding:4px 7px;border-radius:5px;width:140px;outline:none}
   .pip-inp:focus{border-color:var(--amber)}
@@ -269,11 +284,29 @@ export function getHTML() {
         <div class="cfg-sec-title">📥 Eingehender Drucker (Raspberry Pi)</div>
         <div class="cfg-field" style="margin-bottom:10px">
           <label class="cfg-lbl">Pi IP-Adresse <span style="color:var(--amber);font-size:9px;letter-spacing:.04em">(fix im Router vergeben)</span></label>
-          <div class="cfg-preview" id="piIpDisplay" style="cursor:default;font-size:13px;color:var(--txt)">wird geladen…</div>
+          <div class="cfg-preview pi-ip-display" id="piIpDisplay" style="cursor:default;font-size:13px;color:var(--txt)">wird geladen…</div>
         </div>
         <div class="cfg-field">
           <label class="cfg-lbl">asello Drucker-Einstellung</label>
           <div class="cfg-preview" id="proxyPreview" style="color:var(--muted)">—</div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="accordion-btn" id="aselloAccBtn" onclick="toggleAsello()">
+            <span>📋 asello Drucker-Einstellungen anzeigen</span>
+            <span class="arr">▼</span>
+          </button>
+          <div class="accordion-body" id="aselloAccBody">
+            <table class="asello-table">
+              <tr><td>Typ</td><td>Epson TM-T88V/TM-T70II Ethernet</td></tr>
+              <tr><td>IP-Adresse</td><td id="aselloIp">192.168.192.70</td></tr>
+              <tr><td>Port</td><td>80</td></tr>
+              <tr><td>HTTPS verwenden</td><td><span class="tag-off">AUS</span></td></tr>
+              <tr><td>Ohne Warten fortfahren</td><td><span class="tag-on">AN</span></td></tr>
+              <tr><td>E-POS Device verwenden</td><td><span class="tag-off">AUS</span></td></tr>
+              <tr><td>Netzwerk Timeout</td><td>20 Sek.</td></tr>
+              <tr><td>Wartezeit nach Druck</td><td>7,5 Sek.</td></tr>
+            </table>
+          </div>
         </div>
         <input type="hidden" id="cfgProxyIp" value="192.168.192.70">
         <input type="hidden" id="cfgProxyPort" value="8009">
@@ -335,6 +368,7 @@ function openCfg() {
   fetch('/api/agent').then(r=>r.json()).then(agent => {
     if (agent && agent.ip) {
       document.getElementById('piIpDisplay').textContent = agent.ip;
+      if (document.getElementById('aselloIp')) document.getElementById('aselloIp').textContent = agent.ip;
       document.getElementById('cfgProxyIp').value = agent.ip;
     }
     if (agent && agent.hostname) {
@@ -367,6 +401,16 @@ function updateProxyPreview() {
   const ip = document.getElementById('cfgProxyIp').value || '192.168.192.70';
   document.getElementById('proxyPreview').textContent =
     'In asello eintragen: IP = ' + ip + ' | Port = 80 | E-POS: AUS | Ohne Warten: AN';
+}
+
+function toggleAsello() {
+  const btn = document.getElementById('aselloAccBtn');
+  const body = document.getElementById('aselloAccBody');
+  btn.classList.toggle('open');
+  body.classList.toggle('open');
+  btn.querySelector('span:first-child').textContent = btn.classList.contains('open')
+    ? '📋 asello Drucker-Einstellungen verbergen'
+    : '📋 asello Drucker-Einstellungen anzeigen';
 }
 
 function updateCplPreview() {
