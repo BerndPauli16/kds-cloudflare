@@ -144,26 +144,30 @@ const httpServer = http.createServer((req, res) => {
 
     // Einkommenden Bon loggen + KDS Worker (wenn nicht paused)
     setImmediate(async () => {
-      // Bon-Preview generieren
-      const xmlLines = (body.match(/<text[^>]*>([\s\S]*?)<\/text>/gi)||[])
-        .map(m => m.replace(/<[^>]+>/g,'').replace(/&#10;/g,'').trim())
-        .filter(l => l.length > 0);
-      // Große Texte markieren (width="2")
-      const preview = (body.match(/<text[^>]*width="2"[^>]*>([\s\S]*?)<\/text>/gi)||[]).length > 0
-        ? (body.match(/<text[^>]*>([\s\S]*?)<\/text>/gi)||[]).map(m => {
-            const big = /width="2"/.test(m);
-            const txt = m.replace(/<[^>]+>/g,'').replace(/&#10;/g,'').trim();
-            return txt ? (big ? '## ' + txt : txt) : null;
-          }).filter(Boolean).join('\n')
-        : xmlLines.join('\n');
+      // Preview aus parseEposXml bauen
+      const NL = '\n';
+      const parsed = parseEposXml(body);
+      let preview = '';
+      if (parsed.items && parsed.items.length > 0) {
+        const lines = [];
+        if (parsed.tableNumber) lines.push('Tisch: ' + parsed.tableNumber);
+        if (parsed.ticketNumber) lines.push('Bon: ' + parsed.ticketNumber);
+        parsed.items.forEach(function(i) { lines.push('## ' + i.quantity + 'x ' + i.product_name); });
+        preview = lines.join(NL);
+      } else {
+        // Fallback: roher Text
+        preview = (body.match(/<text[^>]*>([\s\S]*?)<\/text>/gi)||[])
+          .map(function(m){ return m.replace(/<[^>]+>/g,'').replace(/&#10;/g,'').trim(); })
+          .filter(function(l){ return l.length > 0; }).slice(0,10).join(NL);
+      }
 
       if (CFG.workerUrl) {
         // Einkommenden Bon speichern
         fetch(CFG.workerUrl + '/api/bon-log', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-API-Key': CFG.apiKey },
-          body: JSON.stringify({ type: 'incoming', preview })
-        }).catch(() => {});
+          body: JSON.stringify({ type: 'incoming', preview: preview })
+        }).catch(function(){});
 
         // KDS nur wenn nicht pausiert
         if (!CFG.paused) {
