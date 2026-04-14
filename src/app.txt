@@ -286,7 +286,7 @@ async function vpLoad(){
       }).join('');
       return '<div class="bon-card">'+
         '<div class="bon-tape">'+
-          '<div style="display:flex;align-items:center;gap:6px">'+badge+'<span class="bon-id">'+ts+'</span></div>'+
+          badge+
           '<button class="bon-del2" onclick="vpDelete('+b.id+')" title="Loeschen">&times;</button>'+
         '</div>'+
         '<div class="bon-body2">'+bodyHtml+'</div>'+
