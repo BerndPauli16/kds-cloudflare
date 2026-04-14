@@ -105,6 +105,24 @@ async function handleAPI(request, env, url, method) {
       return jsonResponse(row ? JSON.parse(row.value) : null);
     }
 
+
+    if (path === '/config' && method === 'GET') {
+      const row = await env.DB.prepare("SELECT value FROM kv_store WHERE key='printer_config'").first().catch(() => null);
+      return jsonResponse(row ? JSON.parse(row.value) : { printerIp: null });
+    }
+
+    if (path === '/config' && method === 'POST') {
+      requireApiKey(request, env);
+      const body = await request.json();
+      const val = JSON.stringify({ printerIp: body.printerIp });
+      await env.DB.prepare("INSERT INTO kv_store (key,value) VALUES ('printer_config',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+        .bind(val).run().catch(async () => {
+          await env.DB.prepare("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)").run();
+          await env.DB.prepare("INSERT INTO kv_store (key,value) VALUES ('printer_config',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(val).run();
+        });
+      return jsonResponse({ ok: true });
+    }
+
     if (path === '/client-ip' && method === 'GET') {
       return jsonResponse({ ip: request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unbekannt' });
     }
