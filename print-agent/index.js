@@ -82,6 +82,30 @@ const httpServer = http.createServer((req, res) => {
     console.log(`[ePOS] ${req.method} ${req.url}`);
 
     // ── TEST-PRINT Route ─────────────────────────
+    if (req.url === '/scan-printer' && req.method === 'POST') {
+      res.writeHead(200, { ...CORS_HEADERS, 'Content-Type': 'application/json' });
+      console.log('[SCAN] Drucker-Suche gestartet...');
+      discoverPrinter().then(function(found) {
+        if (found) {
+          CFG.printerIp = found;
+          console.log('[SCAN] Drucker gefunden: ' + found);
+          // Neue IP an Worker melden
+          if (CFG.workerUrl) {
+            fetch(CFG.workerUrl + '/api/config', {
+              method: 'POST', headers: {'Content-Type':'application/json','X-API-Key':CFG.apiKey},
+              body: JSON.stringify({ printerIp: found, printerPort: CFG.printerPort })
+            }).catch(function(){});
+          }
+          res.end(JSON.stringify({ found: true, ip: found }));
+        } else {
+          res.end(JSON.stringify({ found: false }));
+        }
+      }).catch(function(e) {
+        res.end(JSON.stringify({ found: false, error: e.message }));
+      });
+      return;
+    }
+
     if (req.url === '/test-print' && req.method === 'POST') {
       let cfg = {};
       try { cfg = JSON.parse(body); } catch(e) {}
