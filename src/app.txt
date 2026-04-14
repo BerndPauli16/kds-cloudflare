@@ -108,6 +108,37 @@ async function saveCfg() {
   } catch(e) { cfgMsg('Netzwerkfehler: ' + e.message, 'err'); }
 }
 
+// Drucker-Scan: Pi triggert Auto-Discovery
+async function doScanPrinter() {
+  const btn = document.getElementById('scanBtn');
+  if(btn) { btn.textContent='⏳'; btn.disabled=true; }
+  try {
+    // Pi-IP holen
+    const agentRes = await fetch('/api/agent');
+    const agent = await agentRes.json();
+    if(!agent || !agent.ip) { alert('Pi nicht erreichbar!'); return; }
+    // Pi-Proxy triggern: DELETE request auf /scan-printer
+    const piUrl = 'http://' + agent.ip;
+    const r = await fetch(piUrl + '/scan-printer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trigger: true })
+    });
+    const d = await r.json().catch(()=>({error:'Keine Antwort'}));
+    if(d.found) {
+      document.getElementById('cfgPrinterIp').value = d.ip;
+      if(btn) { btn.textContent='✓'; setTimeout(()=>{btn.textContent='🔍';btn.disabled=false;},2000); }
+      showCfgMsg('Drucker gefunden: ' + d.ip, false);
+    } else {
+      if(btn) { btn.textContent='✗'; setTimeout(()=>{btn.textContent='🔍';btn.disabled=false;},2000); }
+      showCfgMsg('Kein Drucker gefunden im Netzwerk', true);
+    }
+  } catch(e) {
+    if(btn) { btn.textContent='🔍'; btn.disabled=false; }
+    showCfgMsg('Fehler: ' + e.message, true);
+  }
+}
+
 async function doTestPrint() {
   const btn = document.getElementById('testBtn');
   btn.textContent = '⏳ Drucke…';
