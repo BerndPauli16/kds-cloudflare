@@ -292,6 +292,46 @@ async function handleAPI(request, env, url, method) {
       return jsonResponse({ ok: true });
     }
 
+    // ── Bestellverlauf ────────────────────────────────────────────────────
+    if (path === '/history' && method === 'GET') {
+      const kellner = url.searchParams.get('kellner') || null;
+      const limit = Math.min(parseInt(url.searchParams.get('limit') || '100'), 200);
+      // Migration: kellner Spalte sicherstellen
+      await env.DB.prepare('ALTER TABLE tickets ADD COLUMN kellner TEXT').run().catch(()=>{});
+      let query, rows;
+      if (kellner) {
+        rows = await env.DB.prepare(
+          'SELECT id, ticket_number, table_number, status, created_at, printed_at, kellner FROM tickets WHERE kellner=? ORDER BY created_at DESC LIMIT ?'
+        ).bind(kellner, limit).all();
+      } else {
+        rows = await env.DB.prepare(
+          'SELECT id, ticket_number, table_number, status, created_at, printed_at, kellner FROM tickets ORDER BY created_at DESC LIMIT ?'
+        ).bind(limit).all();
+      }
+      // Items für alle Tickets laden
+      const tickets = rows.results || [];
+      for (const t of tickets) {
+        const items = await env.DB.prepare(
+          'SELECT product_name, quantity FROM ticket_items WHERE ticket_id=? ORDER BY id'
+        ).bind(t.id).all();
+        t.items = items.results || [];
+        // Wartezeit berechnen
+        if (t.printed_at && t.created_at) {
+          t.wait_mins = Math.round((new Date(t.printed_at) - new Date(t.created_at)) / 60000);
+        } else if (t.created_at) {
+          t.wait_mins = Math.round((Date.now() - new Date(t.created_at).getTime()) / 60000);
+        } else {
+          t.wait_mins = 0;
+        }
+      }
+      // Alle Kellner-Namen für Filter zurückgeben
+      const kellnerRows = await env.DB.prepare(
+        'SELECT DISTINCT kellner FROM tickets WHERE kellner IS NOT NULL AND kellner != "" ORDER BY kellner'
+      ).all();
+      const kellnerList = (kellnerRows.results || []).map(r => r.kellner);
+      return jsonResponse({ tickets, kellnerList });
+    }
+
     return jsonResponse({ error: 'Not found' }, 404);
 
   } catch (err) {
