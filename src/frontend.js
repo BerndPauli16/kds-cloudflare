@@ -385,6 +385,10 @@ export function getHTML() {
   </div>
 </div>
 </div>
+<div id="histView">
+  <div class="hist-toolbar" id="histToolbar"></div>
+  <div class="hist-list" id="histList"><div class="hist-empty">Lade Verlauf…</div></div>
+</div>
 
 
 <!-- Drucker-Konfigurations-Modal -->
