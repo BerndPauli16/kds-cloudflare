@@ -177,7 +177,7 @@ async function handleAPI(request, env, url, method) {
         await env.DB.prepare("ALTER TABLE bon_log ADD COLUMN raw_text TEXT").run().catch(()=>{});
         await env.DB.prepare("INSERT INTO bon_log (type, preview, raw_text, created_at) VALUES (?,?,?,?)")
           .bind(type||'incoming', preview||'', rawText||'', new Date().toISOString()).run();
-        await env.DB.prepare("DELETE FROM bon_log WHERE id NOT IN (SELECT id FROM bon_log WHERE type=? ORDER BY id DESC LIMIT 3)").bind(type||'incoming').run().catch(()=>{});
+        await env.DB.prepare("DELETE FROM bon_log WHERE type=? AND id NOT IN (SELECT id FROM bon_log WHERE type=? ORDER BY id DESC LIMIT 3)").bind(type||'incoming', type||'incoming').run().catch(()=>{});
         return jsonResponse({ ok: true });
       } catch(dbErr) {
         console.error('bon-log DB Fehler:', dbErr.message);
