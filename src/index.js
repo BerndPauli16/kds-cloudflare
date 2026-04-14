@@ -157,6 +157,16 @@ async function handleAPI(request, env, url, method) {
 
     if (path === '/totals' && method === 'GET') return jsonResponse(await getTotals(env, url.searchParams.get('station')));
 
+    if (path === '/tickets/clear' && method === 'POST') {
+      requireApiKey(request, env);
+      const b = await request.json().catch(() => ({}));
+      const olderThan = b.olderThanMinutes || 60;
+      const cutoff = new Date(Date.now() - olderThan * 60000).toISOString();
+      await env.DB.prepare("DELETE FROM tickets WHERE created_at < ?").bind(cutoff).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM ticket_items WHERE ticket_id NOT IN (SELECT id FROM tickets)").run().catch(() => {});
+      return jsonResponse({ ok: true, cutoff });
+    }
+
     return jsonResponse({ error: 'Not found' }, 404);
 
   } catch (err) {
