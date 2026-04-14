@@ -213,6 +213,20 @@ export function getHTML() {
   .bon-item{font-size:15px;font-weight:700;color:#111;padding:1px 0}
   .bon-small{color:#888;font-size:11px}
   .bon-cut{height:6px;background:repeating-linear-gradient(90deg,#ddd 0 5px,transparent 5px 10px)}
+  .bon-card{background:#f9f8f4;border-radius:6px 6px 0 0;overflow:hidden;animation:bonPop .3s ease;max-width:380px;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+  @keyframes bonPop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+  .bon-tape{background:#e8e6e0;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed #ccc}
+  .bon-id{font-family:monospace;font-size:10px;color:#777}
+  .bon-ts{font-family:monospace;font-size:10px;color:#999}
+  .bon-badge2{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.04em}
+  .bon-badge2.in{background:#dcfce7;color:#166534}
+  .bon-badge2.out{background:#dbeafe;color:#1e40af}
+  .bon-body2{padding:12px 16px;font-family:'Courier New',Courier,monospace;font-size:13px;color:#111;line-height:1.7;background:#f9f8f4}
+  .bon-item2{font-weight:700;font-size:14px;color:#111}
+  .bon-small2{color:#888;font-size:11px}
+  .bon-del2{background:none;border:none;cursor:pointer;color:#bbb;font-size:16px;line-height:1;padding:0 4px;transition:color .15s}
+  .bon-del2:hover{color:#ef4444}
+  .bon-list2{display:flex;flex-direction:column;gap:14px;padding:16px}
   .v-empty{color:var(--muted);font-size:14px;padding:40px;text-align:center;border:1px dashed var(--brd);border-radius:8px;max-width:440px}
   /* ── Virtual Printer ── */
   #vp-view{display:none;flex-direction:column;overflow-y:auto;height:calc(100vh - var(--hh));padding:20px;width:100%}
