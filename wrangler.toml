@@ -26,8 +26,9 @@ bindings = [
   { name = "KDS_ROOM", class_name = "KDSRoom" }
 ]
 
-[text_blobs]
-APP_JS = "src/app.js"
+[[rules]]
+type = "Text"
+globs = ["**/*.txt"]
 
 [[migrations]]
 tag = "v1"
