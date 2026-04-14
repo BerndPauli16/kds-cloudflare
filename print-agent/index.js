@@ -273,7 +273,7 @@ function buildTicketBuffer(p) {
   txt(`Bon:   #${p.ticket_number}`);
   const orderTime = new Date(p.created_at || p.printed_at || Date.now());
   const printTime = new Date(p.printed_at || Date.now());
-  txt(`Zeit:  ${time.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' })}`);
+  txt(`Zeit:  ${printTime.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' })}`);
   line();
 
   // ── Artikel (jetzt gedruckt) ─────────────────
@@ -316,7 +316,7 @@ function buildTicketBuffer(p) {
   // ── Fußzeile ─────────────────────────────────
   line();
   parts.push(escBuf(ESC, 0x61, 0x01));     // Zentriert
-  txt(`Gedruckt: ${time.toLocaleTimeString('de-AT')}`);
+  txt(`Gedruckt: ${printTime.toLocaleTimeString('de-AT')}`);
   br(); br(); br();
   parts.push(escBuf(GS, 0x56, 0x42, 0x00)); // Vollschnitt
 
