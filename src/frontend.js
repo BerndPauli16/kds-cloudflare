@@ -310,6 +310,15 @@ export function getHTML() {
         <button class="btn-save" onclick="saveCfg()">✓ Speichern</button>
         <button class="btn-cancel" onclick="closeCfg()">Abbrechen</button>
       </div>
+      <div style="border-top:1px solid var(--brd);margin-top:16px;padding-top:14px">
+        <div class="cfg-sec-title">🗑 Alte Tickets</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <span style="font-size:12px;color:var(--muted)">Tickets älter als</span>
+          <input class="cfg-inp" id="clearMinutes" value="60" type="number" min="5" style="width:70px">
+          <span style="font-size:12px;color:var(--muted)">Minuten löschen</span>
+          <button class="btn-cancel" onclick="clearOldTickets()" style="margin-left:auto;color:var(--red);border-color:var(--red)">Löschen</button>
+        </div>
+      </div>
       <div class="cfg-msg" id="cfgMsg"></div>
     </div>
   </div>
@@ -352,6 +361,23 @@ function updateCplPreview() {
   const n = parseInt(document.getElementById('cfgChars').value) || 42;
   const nums = '1234567890';
   document.getElementById('cplPreview').textContent = (nums.repeat(10)).substring(0, n) + ' (' + n + ')';
+}
+
+async function clearOldTickets() {
+  const min = parseInt(document.getElementById('clearMinutes').value) || 60;
+  if (!confirm('Alle Tickets älter als ' + min + ' Minuten wirklich löschen?')) return;
+  try {
+    const res = await fetch('/api/tickets/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
+      body: JSON.stringify({ olderThanMinutes: min })
+    });
+    const d = await res.json();
+    if (d.ok) {
+      cfgMsg('✓ Alte Tickets gelöscht!', 'ok');
+      setTimeout(() => { closeCfg(); }, 1000);
+    } else cfgMsg('Fehler beim Löschen', 'err');
+  } catch(e) { cfgMsg('Fehler: ' + e.message, 'err'); }
 }
 
 function cfgMsg(text, type) {
