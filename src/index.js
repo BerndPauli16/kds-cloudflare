@@ -298,8 +298,13 @@ async function handleAPI(request, env, url, method) {
       const limit = Math.min(parseInt(url.searchParams.get('limit') || '100'), 200);
       // Migration: kellner Spalte sicherstellen
       await env.DB.prepare('ALTER TABLE tickets ADD COLUMN kellner TEXT').run().catch(()=>{});
-      let query, rows;
-      if (kellner) {
+      const tisch = url.searchParams.get('tisch') || null;
+      let rows;
+      if (tisch) {
+        rows = await env.DB.prepare(
+          'SELECT id, ticket_number, table_number, status, created_at, printed_at, kellner FROM tickets WHERE table_number=? ORDER BY created_at DESC LIMIT ?'
+        ).bind(tisch, limit).all();
+      } else if (kellner) {
         rows = await env.DB.prepare(
           'SELECT id, ticket_number, table_number, status, created_at, printed_at, kellner FROM tickets WHERE kellner=? ORDER BY created_at DESC LIMIT ?'
         ).bind(kellner, limit).all();
