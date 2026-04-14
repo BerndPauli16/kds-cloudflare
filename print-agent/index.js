@@ -159,7 +159,7 @@ const httpServer = http.createServer((req, res) => {
 
       if (CFG.workerUrl) {
         // Einkommenden Bon speichern
-        fetch(`${CFG.workerUrl}/api/bon-log`, {
+        fetch(CFG.workerUrl + '/api/bon-log', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-API-Key': CFG.apiKey },
           body: JSON.stringify({ type: 'incoming', preview })
@@ -601,13 +601,15 @@ async function pollJobs() {
         console.log(`[JOB ${job.id}] ✓ Gedruckt`);
         // Ausgehenden Bon loggen
         if (CFG.workerUrl && job.payload) {
-          const items = (job.payload.items||[]).map(i => `## ${i.quantity}x  ${i.product_name}`).join('\n');
-          const outPreview = `## Tisch ${job.payload.table_number||'–'}\n## Bon #${job.payload.ticket_number||'?'}\n\n${items}`;
-          fetch(`${CFG.workerUrl}/api/bon-log`, {
+          const NL = '\n';
+          const items = (job.payload.items||[]).map(function(i){ return '## ' + i.quantity + 'x  ' + i.product_name; }).join(NL);
+          const outPreview = '## Tisch ' + (job.payload.table_number||'-') + NL + '## Bon #' + (job.payload.ticket_number||'?') + NL + NL + items;
+          console.log('[BON-LOG-OUT] Speichere:', outPreview.substring(0,60));
+          fetch(CFG.workerUrl + '/api/bon-log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-API-Key': CFG.apiKey },
             body: JSON.stringify({ type: 'outgoing', preview: outPreview })
-          }).catch(() => {});
+          }).then(function(r){ console.log('[BON-LOG-OUT] Status:', r.status); }).catch(function(e){ console.error('[BON-LOG-OUT] Fehler:', e.message); });
         }
       } catch (e) {
         console.error(`[JOB ${job.id}] ✗ Fehler:`, e.message);
