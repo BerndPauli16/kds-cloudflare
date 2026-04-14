@@ -266,18 +266,17 @@ export function getHTML() {
     </div>
     <div class="modal-body">
       <div class="cfg-section">
-        <div class="cfg-sec-title">📥 Eingehender Drucker (Proxy)</div>
-        <div class="cfg-grid">
-          <div class="cfg-field">
-            <label class="cfg-lbl">Pi IP-Adresse</label>
-            <input class="cfg-inp" id="cfgProxyIp" placeholder="192.168.192.70" oninput="updateProxyPreview()">
-          </div>
-          <div class="cfg-field">
-            <label class="cfg-lbl">Proxy Port</label>
-            <input class="cfg-inp" id="cfgProxyPort" placeholder="8009" type="number" oninput="updateProxyPreview()">
-          </div>
+        <div class="cfg-sec-title">📥 Eingehender Drucker (Raspberry Pi)</div>
+        <div class="cfg-field" style="margin-bottom:10px">
+          <label class="cfg-lbl">Pi IP-Adresse <span style="color:var(--amber);font-size:9px;letter-spacing:.04em">(fix im Router vergeben)</span></label>
+          <div class="cfg-preview" id="piIpDisplay" style="cursor:default;font-size:13px;color:var(--txt)">wird geladen…</div>
         </div>
-        <div class="cfg-preview" id="proxyPreview">http://192.168.192.70 → :8009</div>
+        <div class="cfg-field">
+          <label class="cfg-lbl">asello Drucker-Einstellung</label>
+          <div class="cfg-preview" id="proxyPreview" style="color:var(--muted)">—</div>
+        </div>
+        <input type="hidden" id="cfgProxyIp" value="192.168.192.70">
+        <input type="hidden" id="cfgProxyPort" value="8009">
       </div>
 
       <div class="cfg-section">
@@ -332,6 +331,19 @@ let curRot='landscape';
 const API_KEY = 'kds-smarte-events-2026';
 
 function openCfg() {
+  // Pi-IP vom Agent-Endpoint laden (vom Pi selbst gemeldet)
+  fetch('/api/agent').then(r=>r.json()).then(agent => {
+    if (agent && agent.ip) {
+      document.getElementById('piIpDisplay').textContent = agent.ip;
+      document.getElementById('cfgProxyIp').value = agent.ip;
+    }
+    if (agent && agent.hostname) {
+      document.getElementById('piIpDisplay').textContent += '  (' + agent.hostname + ')';
+    }
+  }).catch(() => {
+    document.getElementById('piIpDisplay').textContent = '192.168.192.70 (fix)';
+  });
+
   fetch('/api/config').then(r=>r.json()).then(cfg => {
     document.getElementById('cfgProxyIp').value    = cfg.proxyIp      || '192.168.192.70';
     document.getElementById('cfgProxyPort').value  = cfg.proxyPort    || '8009';
@@ -353,8 +365,8 @@ function closeCfg() {
 
 function updateProxyPreview() {
   const ip = document.getElementById('cfgProxyIp').value || '192.168.192.70';
-  const port = document.getElementById('cfgProxyPort').value || '8009';
-  document.getElementById('proxyPreview').textContent = 'asello → http://' + ip + ':80 → Pi:' + port;
+  document.getElementById('proxyPreview').textContent =
+    'In asello eintragen: IP = ' + ip + ' | Port = 80 | E-POS: AUS | Ohne Warten: AN';
 }
 
 function updateCplPreview() {
