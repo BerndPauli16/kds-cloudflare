@@ -422,7 +422,7 @@ export function getHTML() {
   </div>
 </div>
 
-<script src="/app.js"></script>
+<script src="/app.js" defer></script>
 </body>
 </html>`;
 }
