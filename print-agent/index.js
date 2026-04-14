@@ -29,8 +29,6 @@ const server = net.createServer((posSocket) => {
   const printerSocket = new net.Socket();
   printerSocket.connect(CFG.printerPort, CFG.printerIp, () => {
     console.log(`[PROXY] → Drucker ${CFG.printerIp}:${CFG.printerPort}`);
-    // Epson online-Status zurueckschicken
-    posSocket.write(Buffer.from([0x16]));
   });
 
   // Bytes 1:1 durchleiten UND für Parser sammeln
