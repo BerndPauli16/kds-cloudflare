@@ -398,17 +398,25 @@ function rProducts(){
     g.dataset.prod=n;
     const pinnedCount=Object.keys(PINS).length;
     const mySlot=pin?pin.slot:null;
+    var pinColor = color || '#f59e0b';
+    // Neues Layout: Footer mit ◀ [📌 Farbe] ▶ — immer sichtbar
     g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+(isZero?'':Math.round(tot))+'</div></div>'
-      +(isPinned?'<button class="color-btn" title="Farbe wählen" style="background:'+(color||'#888')+'"></button><input type="color" class="color-inp" value="'+(color||'#f59e0b')+'">':'')
-      +'<button class="pin-btn'+(isPinned?' pinned':'')+'">📌</button>'
-      +(isPinned?'<button class="move-btn left">◀</button><button class="move-btn right">▶</button>':'');
+      +'<div class="pg-footer">'
+        +(isPinned?'<button class="move-btn left" title="Nach links">◀</button>':'<div style="width:38px"></div>')
+        +'<div class="pg-center">'
+          +'<button class="pin-btn'+(isPinned?' pinned':'')+'">📌</button>'
+          +'<button class="color-btn" title="Farbe wählen" style="background:'+pinColor+'"></button>'
+          +'<input type="color" class="color-inp" value="'+pinColor+'">'
+        +'</div>'
+        +(isPinned?'<button class="move-btn right" title="Nach rechts">▶</button>':'<div style="width:38px"></div>')
+      +'</div>';
     if (isPinned) applyPinColor(g, color);
     g.querySelector('.pin-btn').addEventListener('click',e=>{e.stopPropagation();togglePin(n);});
+    const ci=g.querySelector('.color-inp');
+    const cb=g.querySelector('.color-btn');
+    cb.addEventListener('click',e=>{e.stopPropagation();ci.click();});
+    ci.addEventListener('input',e=>{e.stopPropagation();setPinColor(n,e.target.value);});
     if(isPinned){
-      const ci=g.querySelector('.color-inp');
-      const cb=g.querySelector('.color-btn');
-      cb.addEventListener('click',e=>{e.stopPropagation();ci.click();});
-      ci.addEventListener('input',e=>{e.stopPropagation();setPinColor(n,e.target.value);});
       g.querySelector('.move-btn.left').addEventListener('click',e=>{e.stopPropagation();movePin(n,-1);});
       g.querySelector('.move-btn.right').addEventListener('click',e=>{e.stopPropagation();movePin(n,1);});
     }
