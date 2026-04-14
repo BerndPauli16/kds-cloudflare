@@ -257,6 +257,12 @@ function connectWS(){
 
 // ─── Virtual Printer ────────────────────────────────────────────────────
 let VP={type:'in',paused:false,timer:null};
+function vpType(t){
+  VP.type=t;
+  document.getElementById('vpIn').classList.toggle('active',t==='in');
+  document.getElementById('vpOut').classList.toggle('active',t==='out');
+  vpLoad();
+}
 async function vpLoad(){
   try{
     var apiType=VP.type==='in'?'incoming':'outgoing';
