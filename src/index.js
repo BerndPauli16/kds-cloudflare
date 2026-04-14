@@ -108,19 +108,47 @@ async function handleAPI(request, env, url, method) {
 
     if (path === '/config' && method === 'GET') {
       const row = await env.DB.prepare("SELECT value FROM kv_store WHERE key='printer_config'").first().catch(() => null);
-      return jsonResponse(row ? JSON.parse(row.value) : { printerIp: null });
+      return jsonResponse(row ? JSON.parse(row.value) : {
+        printerIp: '192.168.192.202', printerPort: 9100, charsPerLine: 42,
+        proxyIp: '192.168.192.70', proxyPort: 8009
+      });
     }
 
     if (path === '/config' && method === 'POST') {
       requireApiKey(request, env);
       const body = await request.json();
-      const val = JSON.stringify({ printerIp: body.printerIp });
+      const val = JSON.stringify({
+        printerIp:    body.printerIp    || '192.168.192.202',
+        printerPort:  body.printerPort  || 9100,
+        charsPerLine: body.charsPerLine || 42,
+        proxyIp:      body.proxyIp      || '192.168.192.70',
+        proxyPort:    body.proxyPort    || 8009,
+      });
       await env.DB.prepare("INSERT INTO kv_store (key,value) VALUES ('printer_config',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
         .bind(val).run().catch(async () => {
           await env.DB.prepare("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)").run();
           await env.DB.prepare("INSERT INTO kv_store (key,value) VALUES ('printer_config',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(val).run();
         });
       return jsonResponse({ ok: true });
+    }
+
+    if (path === '/test-print' && method === 'POST') {
+      requireApiKey(request, env);
+      const row = await env.DB.prepare("SELECT value FROM kv_store WHERE key='printer_config'").first().catch(() => null);
+      const cfg = row ? JSON.parse(row.value) : { proxyIp: '192.168.192.70', proxyPort: 8009 };
+      const piUrl = `http://${cfg.proxyIp}:${cfg.proxyPort}/test-print`;
+      try {
+        const res = await fetch(piUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ charsPerLine: cfg.charsPerLine || 42 }),
+          signal: AbortSignal.timeout(10000),
+        });
+        const data = await res.json().catch(() => ({}));
+        return jsonResponse({ ok: res.ok, ...data });
+      } catch(e) {
+        return jsonResponse({ ok: false, error: e.message }, 502);
+      }
     }
 
     if (path === '/client-ip' && method === 'GET') {
