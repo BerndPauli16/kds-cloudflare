@@ -26,6 +26,9 @@ bindings = [
   { name = "KDS_ROOM", class_name = "KDSRoom" }
 ]
 
+[text_blobs]
+APP_JS = "src/app.js"
+
 [[migrations]]
 tag = "v1"
 new_classes = ["KDSRoom"]
