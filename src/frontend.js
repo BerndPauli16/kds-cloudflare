@@ -997,3 +997,14 @@ function vRenderPreview(preview) {
     return '<div class="bon-small">'+l+'</div>';
   }).join('');
 }
+
+async function vInit() {
+  try{var r=await fetch('/api/pause-state');var d=await r.json();vPaused=d.paused||false;vRenderPause();}catch(e){}
+}
+vInit();
+setInterval(function(){ if(S.view==='virtual') vLoadBons(); },5000);
+
+</script>
+</body>
+</html>`;
+}
