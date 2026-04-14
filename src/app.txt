@@ -550,7 +550,7 @@ function renderTot(){
   } else {
     sorted.forEach(t=>{
       const pin=PINS[t.product_name];
-      const col=pin&&pin.color?pin.color:null;
+      const col=COLORS[t.product_name]||(pin&&pin.color?pin.color:null);
       const row=document.createElement('div');
       row.className='tot-row';
       if(col) row.style.cssText='background:'+col+'33;border-left:3px solid '+col;
