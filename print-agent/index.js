@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // ════════════════════════════════════════════════
 //  KDS Print-Agent – Raspberry Pi
-//  TCP-Proxy: POS → Pi:9100 → Drucker:9100
-//  Parser:    ESC/POS Text → Cloudflare Worker
+//  HTTP-Proxy: ePOS (asello) → Pi:8009 → Drucker
+//  TCP-Proxy:  RAW ESC/POS   → Pi:8009 → Drucker
 // ════════════════════════════════════════════════
 
 require('dotenv').config();
-const net = require('net');
+const net  = require('net');
+const http = require('http');
 
 const CFG = {
   printerIp:    process.env.PRINTER_IP       || '192.168.1.100',
@@ -19,75 +20,83 @@ const CFG = {
 
 let jobCounter = 0;
 
-// ════════════════════════════════════════════════
-//  TCP-PROXY
-// ════════════════════════════════════════════════
-// Epson-ähnliche HTTP-Antwort für Status-Checks (asello "load"-Test)
-const EPSON_HTTP_RESPONSE = [
-  'HTTP/1.1 200 OK',
-  'Content-Type: text/xml; charset=utf-8',
-  'Connection: close',
-  '',
-  '<?xml version="1.0" encoding="utf-8"?>',
-  '<PrinterStatus><Online>true</Online><Status>0</Status></PrinterStatus>',
-  ''
-].join('\r\n');
+// ═══════════════════════════════════════════════
+//  ePOS XML → ESC/POS Buffer konvertieren
+// ═══════════════════════════════════════════════
+function eposXmlToEscpos(xmlStr) {
+  const ESC = 0x1b, GS = 0x1d, LF = 0x0a;
+  const parts = [Buffer.from([ESC, 0x40])]; // Init
 
-const server = net.createServer((posSocket) => {
-  console.log(`[PROXY] Verbindung von ${posSocket.remoteAddress}`);
-  const chunks = [];
-  let protocolDetected = false;
+  // Texte aus <text>...</text> extrahieren
+  const textMatches = xmlStr.match(/<text[^>]*>([\s\S]*?)<\/text>/gi) || [];
+  for (const m of textMatches) {
+    const inner = m.replace(/<[^>]+>/g, '')
+      .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
+      .replace(/&#10;/g,'\n').replace(/&#13;/g,'\r');
+    parts.push(Buffer.from(inner, 'utf8'));
+  }
 
-  posSocket.once('data', (firstChunk) => {
-    const firstBytes = firstChunk.toString('utf8', 0, 8);
+  // Cut-Befehl
+  parts.push(Buffer.from([GS, 0x56, 0x42, 0x00]));
+  return Buffer.concat(parts);
+}
 
-    // HTTP-Request erkennen (GET/POST/HEAD)
-    if (firstBytes.startsWith('GET ') || firstBytes.startsWith('POST ') || firstBytes.startsWith('HEAD ')) {
-      console.log(`[PROXY] HTTP-Request → Epson-Status zurückschicken`);
-      posSocket.write(EPSON_HTTP_RESPONSE);
-      posSocket.end();
+// ═══════════════════════════════════════════════
+//  ESC/POS direkt zum Drucker schicken
+// ═══════════════════════════════════════════════
+function sendToPrinterRaw(buf) {
+  return new Promise((resolve, reject) => {
+    const sock = new net.Socket();
+    const timer = setTimeout(() => { sock.destroy(); reject(new Error('Drucker Timeout')); }, 6000);
+    sock.connect(CFG.printerPort, CFG.printerIp, () => {
+      sock.write(buf, () => { clearTimeout(timer); sock.end(); resolve(); });
+    });
+    sock.on('error', e => { clearTimeout(timer); reject(e); });
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  HTTP-Server für ePOS-Requests (asello)
+// ═══════════════════════════════════════════════
+const httpServer = http.createServer((req, res) => {
+  let body = '';
+  req.on('data', chunk => body += chunk.toString());
+  req.on('end', async () => {
+    console.log(`[ePOS] ${req.method} ${req.url}`);
+
+    // Status-Anfrage (GET oder leerer POST)
+    if (req.method === 'GET' || body.length < 20) {
+      res.writeHead(200, {'Content-Type': 'text/xml; charset=utf-8'});
+      res.end('<?xml version="1.0"?><response success="true" code="SchemaError" status="0" battery="0"/>');
       return;
     }
 
-    // Normaler ESC/POS TCP-Druck
-    protocolDetected = true;
-    chunks.push(firstChunk);
+    // Druck-Anfrage (POST mit XML)
+    console.log(`[ePOS] Druckjob empfangen (${body.length} bytes)`);
 
-    const printerSocket = new net.Socket();
-    printerSocket.connect(CFG.printerPort, CFG.printerIp, () => {
-      console.log(`[PROXY] → Drucker ${CFG.printerIp}:${CFG.printerPort}`);
-      printerSocket.write(firstChunk);
-    });
+    try {
+      // XML → ESC/POS → Drucker
+      const escBuf = eposXmlToEscpos(body);
+      await sendToPrinterRaw(escBuf);
+      console.log(`[ePOS] ✓ Gedruckt (${escBuf.length} bytes)`);
 
-    posSocket.on('data', (data) => {
-      chunks.push(data);
-      printerSocket.write(data);
-    });
-
-    printerSocket.on('data', (data) => posSocket.write(data));
-
-    posSocket.on('end', () => {
-      printerSocket.end();
-      if (CFG.workerUrl && chunks.length > 0) {
-        const raw = Buffer.concat(chunks);
-        parseAndForward(raw).catch(e => console.error('[PARSER] Fehler:', e.message));
+      // KDS-Parsing parallel
+      if (CFG.workerUrl) {
+        parseAndForward(escBuf).catch(e => console.error('[PARSER]', e.message));
       }
-    });
+    } catch(e) {
+      console.error('[ePOS] Druckfehler:', e.message);
+    }
 
-    posSocket.on('error',     e => console.error('[POS]     Fehler:', e.message));
-    printerSocket.on('error', e => console.error('[DRUCKER] Fehler:', e.message));
-    printerSocket.on('close', () => posSocket.destroy());
-    posSocket.on('close',     () => printerSocket.destroy());
+    res.writeHead(200, {'Content-Type': 'text/xml; charset=utf-8'});
+    res.end('<?xml version="1.0"?><response success="true" code="SchemaError" status="0" battery="0"/>');
   });
-
-  posSocket.on('error', e => console.error('[POS] Fehler:', e.message));
 });
 
-server.listen(CFG.proxyPort, '0.0.0.0', () => {
-  console.log(`[PROXY] Horcht auf Port ${CFG.proxyPort}`);
+httpServer.listen(CFG.proxyPort, '0.0.0.0', () => {
+  console.log(`[ePOS]  HTTP-Proxy auf Port ${CFG.proxyPort}`);
 });
 
-// ════════════════════════════════════════════════
 //  ESC/POS → Klartext
 //  Entfernt alle Steuerzeichen, gibt Zeilen zurück
 // ════════════════════════════════════════════════
