@@ -748,7 +748,7 @@ async function pollJobs() {
             : '';
           // Preview 1:1 wie der physische Bon
           var outPreview =
-            (job.payload.station_name ? job.payload.station_name + NL : 'Kellner' + NL) +
+            'KELLNER: ' + (job.payload.station_name || 'Unbekannt') + NL +
             'Tisch ' + (job.payload.table_number || '-') + NL +
             'Bon:   #' + (job.payload.ticket_number || '?') + NL +
             'BONIERT: ' + (incomingTime || '?') + NL +
