@@ -603,12 +603,28 @@ async function pollJobs() {
           headers: { 'X-API-Key': CFG.apiKey },
         });
         console.log(`[JOB ${job.id}] ✓ Gedruckt`);
-        // Ausgehenden Bon loggen
+        // Ausgehenden Bon loggen mit Zeiten
         if (CFG.workerUrl && job.payload) {
-          const NL = '\n';
-          const items = (job.payload.items||[]).map(function(i){ return '## ' + i.quantity + 'x  ' + i.product_name; }).join(NL);
-          const outPreview = '## Tisch ' + (job.payload.table_number||'-') + NL + '## Bon #' + (job.payload.ticket_number||'?') + NL + NL + items;
-          console.log('[BON-LOG-OUT] Speichere:', outPreview.substring(0,60));
+          var NL = '\n';
+          var now = new Date();
+          var printTime = now.toLocaleTimeString('de-AT', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+          // Eingangszeit aus job.payload (created_at des Tickets)
+          var incomingTime = '';
+          var durationMin = 0;
+          if (job.payload.created_at) {
+            var inDate = new Date(job.payload.created_at);
+            incomingTime = inDate.toLocaleTimeString('de-AT', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+            durationMin = Math.round((now - inDate) / 60000);
+          }
+          var items = (job.payload.items||[]).map(function(i){ return '## ' + i.quantity + 'x  ' + i.product_name; }).join(NL);
+          var outPreview = 
+            'EINGANG: ' + (incomingTime || '?') + NL +
+            'DAUER: ' + durationMin + ' min' + NL +
+            '---' + NL +
+            items + NL +
+            '---' + NL +
+            'GEDRUCKT: ' + printTime;
+          console.log('[BON-LOG-OUT] Speichere:', outPreview.substring(0,80));
           fetch(CFG.workerUrl + '/api/bon-log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-API-Key': CFG.apiKey },
