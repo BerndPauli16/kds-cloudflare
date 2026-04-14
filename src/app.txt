@@ -276,28 +276,20 @@ async function vpLoad(){
     el.innerHTML='<div class="bon-list2">'+bons.map(function(b){
       var t=new Date(b.created_at);
       var ts=t.toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      var lines=(b.preview||'').split(NL).filter(function(l){return l.trim();});
-      var itemsHtml=lines.map(function(l){
-        if(l.indexOf('## ')===0){
-          var txt2=l.slice(3).trim();
-          var m=txt2.match(/(\d+)[x]?\s+(.+)/);
-          if(m) return '<div class="bon-item2">'+m[1]+'&times; '+m[2]+'</div>';
-          return '<div class="bon-item2">'+txt2+'</div>';
-        }
-        if(l.indexOf('TISCH:')===0){var tn=l.replace('TISCH:','').trim();return '<div class="bon-tisch"><b>Tisch '+tn+'</b></div>';}
-        if(l.indexOf('EINGANG:')===0) return '<div class="bon-zeit in-zeit">&#128229; '+l.replace('EINGANG:','').trim()+'</div>';
-        if(l.indexOf('DAUER:')===0) return '<div class="bon-zeit dauer-zeit">&#9201; '+l.replace('DAUER:','').trim()+'</div>';
-        if(l.indexOf('GEDRUCKT:')===0) return '<div class="bon-zeit out-zeit">&#128228; '+l.replace('GEDRUCKT:','').trim()+'</div>';
-        if(l==='---') return '<hr style="border:none;border-top:1px dashed #ccc;margin:4px 0">';
-        return '<div class="bon-small2">'+l+'</div>';
-      }).join('');
       var badge=VP.type==='in'?'<span class="bon-badge2 in">EINGANG</span>':'<span class="bon-badge2 out">AUSGANG</span>';
+      var lines=(b.preview||'').split(NL);
+      var bodyHtml=lines.map(function(l){
+        var esc=l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        if(!esc.trim()) return '<div style="height:3px"></div>';
+        if(esc.match(/^[-=]{4,}$/)) return '<hr style="border:none;border-top:1px dashed #bbb;margin:3px 0">';
+        return '<div class="bon-raw-line">'+esc+'</div>';
+      }).join('');
       return '<div class="bon-card">'+
         '<div class="bon-tape">'+
           '<div style="display:flex;align-items:center;gap:6px">'+badge+'<span class="bon-id">'+ts+'</span></div>'+
           '<button class="bon-del2" onclick="vpDelete('+b.id+')" title="Loeschen">&times;</button>'+
         '</div>'+
-        '<div class="bon-body2">'+itemsHtml+'</div>'+
+        '<div class="bon-body2">'+bodyHtml+'</div>'+
         '<div class="bon-cut"></div>'+
       '</div>';
     }).join('')+'</div>';
