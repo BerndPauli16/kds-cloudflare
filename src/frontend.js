@@ -651,11 +651,44 @@ function connectWS(){
   };
 }
 
+// ─── Virtual Printer ────────────────────────────────────────────────────
+let VP={type:'in',paused:false,timer:null};
+async function vpLoad(){
+  try{
+    const [bRes,sRes]=await Promise.all([fetch('/api/bons?type='+VP.type+'&limit=3'),fetch('/api/bons/state')]);
+    const bons=await bRes.json(); const state=await sRes.json();
+    VP.paused=state.paused||false; vpUpdatePlayBtn();
+    const el=document.getElementById('vpBons');
+    if(!bons||!bons.length){el.innerHTML='<div class="vp-empty">📭 Keine Bons vorhanden</div>';return;}
+    el.innerHTML=bons.map(b=>{
+      let d={};try{d=JSON.parse(b.summary);}catch(e){}
+      const t=new Date(b.created_at);
+      const ts=t.toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      return '<div class="bon-card">' +
+        '<div class="bon-card-body">' +
+          '<div class="bon-card-hdr"><span class="bon-num">#'+(d.ticketNumber||b.id)+'</span><span class="bon-time">'+ts+'</span></div>'+
+          '<div class="bon-items">'+(d.items||'—')+'</div>'+
+          (d.table&&d.table!=='—'?'<div class="bon-table">Tisch: '+d.table+'</div>':'')+
+        '</div>'+
+        '<button class="bon-del" onclick="vpDelete('+b.id+')">✕</button>'+
+      '</div>';
+    }).join('');
+  }catch(e){console.error(e);}
+}
+function vpType(t){VP.type=t;document.getElementById('vpIn').classList.toggle('active',t==='in');document.getElementById('vpOut').classList.toggle('active',t==='out');vpLoad();}
+async function vpTogglePlay(){VP.paused=!VP.paused;vpUpdatePlayBtn();await fetch('/api/bons/state',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':API_KEY},body:JSON.stringify({paused:VP.paused})});}
+function vpUpdatePlayBtn(){const btn=document.getElementById('vpPlay');const icon=document.getElementById('vpPlayIcon');const lbl=document.getElementById('vpPlayLabel');if(VP.paused){btn.className='vp-play paused';icon.textContent='⏸';lbl.textContent='PAUSIERT';}else{btn.className='vp-play playing';icon.textContent='▶';lbl.textContent='AKTIV';}}
+async function vpDelete(id){await fetch('/api/bons/'+id,{method:'DELETE',headers:{'X-API-Key':API_KEY}});vpLoad();}
+function vpStartTimer(){if(VP.timer)clearInterval(VP.timer);VP.timer=setInterval(vpLoad,5000);}
+
 function sv(v){
   S.view=v;
   document.getElementById('tO').classList.toggle('active',v==='orders');
   document.getElementById('tP').classList.toggle('active',v==='products');
+  document.getElementById('tV').classList.toggle('active',v==='virtual');
   document.getElementById('main').classList.toggle('products-view',v==='products');
+  const vpView=document.getElementById('vp-view');
+  if(vpView){vpView.classList.toggle('active',v==='virtual');if(v==='virtual'){vpLoad();vpStartTimer();}else if(VP.timer){clearInterval(VP.timer);VP.timer=null;}}
   render();
 }
 function render(){S.view==='orders'?rOrders():rProducts();}
