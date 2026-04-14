@@ -156,7 +156,7 @@ export function getHTML() {
   .move-btn.right{right:6px}
   .printer-ip-wrap{display:flex;align-items:center;gap:4px}
   .pip-lbl{font-size:16px;line-height:1}
-  .pip-inp{background:var(--bg);border:1px solid var(--brd);color:var(--txt);font-family:var(--mono);font-size:12px;padding:4px 7px;border-radius:5px;width:110px;outline:none}
+  .pip-inp{background:var(--bg);border:1px solid var(--brd);color:var(--txt);font-family:var(--mono);font-size:12px;padding:4px 7px;border-radius:5px;width:140px;outline:none}
   .pip-inp:focus{border-color:var(--amber)}
   .pip-btn{background:transparent;border:1px solid var(--brd);color:var(--muted);padding:4px 7px;border-radius:5px;cursor:pointer;font-size:13px;transition:all .15s}
   .pip-btn:hover{border-color:var(--green);color:var(--green)}
@@ -198,15 +198,15 @@ export function getHTML() {
       </button>
     </div>
     <div class="div"></div>
+    <div class="theme-wrap" onclick="toggleTheme()">
+      <div class="theme-track"><div class="theme-thumb"></div></div>
+      <span class="theme-lbl" id="tLbl">DUNKEL</span>
+    </div>
+    <div class="div"></div>
     <div class="printer-ip-wrap">
       <label class="pip-lbl">🖨</label>
       <input class="pip-inp" id="pipInp" type="text" placeholder="192.168.x.x" maxlength="15" spellcheck="false">
       <button class="pip-btn" onclick="savePrinterIp()">&#10003;</button>
-    </div>
-    <div class="div"></div>
-    <div class="theme-wrap" onclick="toggleTheme()">
-      <div class="theme-track"><div class="theme-thumb"></div></div>
-      <span class="theme-lbl" id="tLbl">DUNKEL</span>
     </div>
     <div class="tabs">
       <button class="tab active" id="tO" onclick="sv('orders')">Bestellungen</button>
