@@ -67,7 +67,7 @@ const httpServer = http.createServer((req, res) => {
     // Status-Anfrage (GET oder leerer POST)
     if (req.method === 'GET' || body.length < 20) {
       res.writeHead(200, {'Content-Type': 'text/xml; charset=utf-8'});
-      res.end('<?xml version="1.0"?><response success="true" code="SchemaError" status="0" battery="0"/>');
+      res.end('<?xml version="1.0" encoding="utf-8"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><epos-print:response xmlns:epos-print="http://www.epson-pos.com/schemas/2011/03/epos-print" success="true" code="SUCCESS" status="1814789376" battery="0"/></SOAP-ENV:Body></SOAP-ENV:Envelope>');
       return;
     }
 
@@ -89,7 +89,7 @@ const httpServer = http.createServer((req, res) => {
     }
 
     res.writeHead(200, {'Content-Type': 'text/xml; charset=utf-8'});
-    res.end('<?xml version="1.0"?><response success="true" code="SchemaError" status="0" battery="0"/>');
+    res.end('<?xml version="1.0" encoding="utf-8"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><epos-print:response xmlns:epos-print="http://www.epson-pos.com/schemas/2011/03/epos-print" success="true" code="SUCCESS" status="1814789376" battery="0"/></SOAP-ENV:Body></SOAP-ENV:Envelope>');
   });
 });
 
