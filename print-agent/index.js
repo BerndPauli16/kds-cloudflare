@@ -142,7 +142,8 @@ const httpServer = http.createServer((req, res) => {
     res.end(soapResp);
 
     // Nur noch KDS Worker — kein automatischer Druck mehr!
-    // Gedruckt wird per DRUCKEN-Button im KDS Monitor.
+    require('fs').writeFileSync('/tmp/last_bon.xml', body, 'utf8');
+    console.log('[DEBUG] XML gespeichert /tmp/last_bon.xml');
     setImmediate(async () => {
       if (CFG.workerUrl) {
         parseAndForward(Buffer.from(body)).catch(e => console.error('[PARSER]', e.message));
