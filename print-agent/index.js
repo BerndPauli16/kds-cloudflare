@@ -634,21 +634,26 @@ async function pollJobs() {
             incomingTime = inDate.toLocaleTimeString('de-AT', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
             durationMin = Math.round((now - inDate) / 60000);
           }
-          var items = (job.payload.items||[]).map(function(i){ return '## ' + i.quantity + 'x  ' + i.product_name; }).join(NL);
-          // Kompletter Ausgehend-Bon - nichts weglassen
-          var allItems = (job.payload.all_items || job.payload.items || [])
-            .map(function(i){ return String(i.quantity).padStart(2) + 'x  ' + i.product_name; }).join(NL);
+          // Gedruckte Artikel (die jetzt gedruckt werden)
+          var printedItems = (job.payload.items||[])
+            .map(function(i){ return '## ' + i.quantity + 'x  ' + i.product_name; }).join(NL);
+          // Alle Artikel des Bons (fuer EIN TEIL VON Sektion)
+          var hasAllItems = job.payload.partial && job.payload.all_items && job.payload.all_items.length > 0;
+          var allItemsText = hasAllItems
+            ? (job.payload.all_items||[]).map(function(i){ return String(i.quantity).padStart(2) + 'x  ' + i.product_name; }).join(NL)
+            : '';
+          // Preview 1:1 wie der physische Bon
           var outPreview =
-            (job.payload.station_name ? job.payload.station_name + NL : '') +
-            (job.payload.table_number ? 'Tisch ' + job.payload.table_number + NL : '') +
-            'Bon: #' + (job.payload.ticket_number || '?') + NL +
-            'Boniert: ' + (incomingTime || '?') + NL +
-            'Dauer: ' + durationMin + ' min' + NL +
-            (job.payload.partial ? '(Teildruck)' + NL : '') +
-            '----------------------------------------' + NL +
-            allItems + NL +
-            '----------------------------------------' + NL +
-            'Gedruckt: ' + printTime;
+            (job.payload.station_name ? job.payload.station_name + NL : 'Kellner' + NL) +
+            'Tisch ' + (job.payload.table_number || '-') + NL +
+            'Bon:   #' + (job.payload.ticket_number || '?') + NL +
+            'BONIERT: ' + (incomingTime || '?') + NL +
+            '---' + NL +
+            printedItems + NL +
+            (hasAllItems ? ('---' + NL + (job.payload.is_last ? 'DER REST VON' : 'EIN TEIL VON') + NL + '---' + NL + allItemsText + NL) : '') +
+            '---' + NL +
+            'DAUER: ' + durationMin + ' min' + NL +
+            'BIS GEDRUCKT UM: ' + printTime;
           console.log('[BON-LOG-OUT] Speichere:', outPreview.substring(0,80));
           fetch(CFG.workerUrl + '/api/bon-log', {
             method: 'POST',
