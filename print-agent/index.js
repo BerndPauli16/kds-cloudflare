@@ -22,35 +22,65 @@ let jobCounter = 0;
 // ════════════════════════════════════════════════
 //  TCP-PROXY
 // ════════════════════════════════════════════════
+// Epson-ähnliche HTTP-Antwort für Status-Checks (asello "load"-Test)
+const EPSON_HTTP_RESPONSE = [
+  'HTTP/1.1 200 OK',
+  'Content-Type: text/xml; charset=utf-8',
+  'Connection: close',
+  '',
+  '<?xml version="1.0" encoding="utf-8"?>',
+  '<PrinterStatus><Online>true</Online><Status>0</Status></PrinterStatus>',
+  ''
+].join('\r\n');
+
 const server = net.createServer((posSocket) => {
   console.log(`[PROXY] Verbindung von ${posSocket.remoteAddress}`);
   const chunks = [];
+  let protocolDetected = false;
 
-  const printerSocket = new net.Socket();
-  printerSocket.connect(CFG.printerPort, CFG.printerIp, () => {
-    console.log(`[PROXY] → Drucker ${CFG.printerIp}:${CFG.printerPort}`);
-  });
+  posSocket.once('data', (firstChunk) => {
+    const firstBytes = firstChunk.toString('utf8', 0, 8);
 
-  // Bytes 1:1 durchleiten UND für Parser sammeln
-  posSocket.on('data', (data) => {
-    chunks.push(data);
-    printerSocket.write(data);
-  });
-
-  printerSocket.on('data', (data) => posSocket.write(data));
-
-  posSocket.on('end', () => {
-    printerSocket.end();
-    if (CFG.workerUrl && chunks.length > 0) {
-      const raw = Buffer.concat(chunks);
-      parseAndForward(raw).catch(e => console.error('[PARSER] Fehler:', e.message));
+    // HTTP-Request erkennen (GET/POST/HEAD)
+    if (firstBytes.startsWith('GET ') || firstBytes.startsWith('POST ') || firstBytes.startsWith('HEAD ')) {
+      console.log(`[PROXY] HTTP-Request → Epson-Status zurückschicken`);
+      posSocket.write(EPSON_HTTP_RESPONSE);
+      posSocket.end();
+      return;
     }
+
+    // Normaler ESC/POS TCP-Druck
+    protocolDetected = true;
+    chunks.push(firstChunk);
+
+    const printerSocket = new net.Socket();
+    printerSocket.connect(CFG.printerPort, CFG.printerIp, () => {
+      console.log(`[PROXY] → Drucker ${CFG.printerIp}:${CFG.printerPort}`);
+      printerSocket.write(firstChunk);
+    });
+
+    posSocket.on('data', (data) => {
+      chunks.push(data);
+      printerSocket.write(data);
+    });
+
+    printerSocket.on('data', (data) => posSocket.write(data));
+
+    posSocket.on('end', () => {
+      printerSocket.end();
+      if (CFG.workerUrl && chunks.length > 0) {
+        const raw = Buffer.concat(chunks);
+        parseAndForward(raw).catch(e => console.error('[PARSER] Fehler:', e.message));
+      }
+    });
+
+    posSocket.on('error',     e => console.error('[POS]     Fehler:', e.message));
+    printerSocket.on('error', e => console.error('[DRUCKER] Fehler:', e.message));
+    printerSocket.on('close', () => posSocket.destroy());
+    posSocket.on('close',     () => printerSocket.destroy());
   });
 
-  posSocket.on('error',     e => console.error('[POS]     Fehler:', e.message));
-  printerSocket.on('error', e => console.error('[DRUCKER] Fehler:', e.message));
-  printerSocket.on('close', () => posSocket.destroy());
-  posSocket.on('close',     () => printerSocket.destroy());
+  posSocket.on('error', e => console.error('[POS] Fehler:', e.message));
 });
 
 server.listen(CFG.proxyPort, '0.0.0.0', () => {
