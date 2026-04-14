@@ -308,7 +308,6 @@ export function getHTML() {
     <div class="tabs">
       <button class="tab active" id="tO" onclick="sv('orders')">Bestellungen</button>
       <button class="tab"        id="tP" onclick="sv('products')">Produkte</button>
-      <button class="tab"        id="tV" onclick="sv('virtuell')">Virtuell</button>
       <button class="tab"        id="tV" onclick="sv('virtual')">Virtuell</button>
     </div>
     <div class="ws-dot" id="wsDot"></div>
