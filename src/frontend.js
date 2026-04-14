@@ -239,6 +239,28 @@ export function getHTML() {
   .bon-raw-line{font-family:'Courier New',Courier,monospace;font-size:12px;color:#111;white-space:pre-wrap;word-break:break-all;line-height:1.5}
   .bon-del2:hover{color:#ef4444}
   .bon-list2{display:flex;flex-direction:column;gap:14px;padding:16px;max-width:500px}
+  /* ── Bestellverlauf ── */
+  #histView{display:none;overflow-y:auto;height:calc(100vh - var(--hh));padding:0}
+  #histView.active{display:flex;flex-direction:column}
+  .hist-toolbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--brd);flex-shrink:0;flex-wrap:wrap}
+  .hist-toolbar-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .kl-btn{background:var(--sur2);border:1px solid var(--brd);border-radius:20px;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:4px 12px;transition:all .15s;white-space:nowrap}
+  .kl-btn.active{background:var(--amber);color:#000;border-color:var(--amber)}
+  .kl-btn:hover{border-color:var(--amber);color:var(--amber)}
+  .hist-list{flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:4px}
+  .hr{background:var(--sur);border:1px solid var(--brd);border-radius:6px;padding:7px 10px;font-size:11px;line-height:1.5}
+  .hr-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .hr-tisch{font-size:13px;font-weight:700;color:var(--txt);min-width:70px}
+  .hr-kel{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.04em}
+  .hr-bon{font-size:10px;color:var(--muted);font-family:var(--mono)}
+  .hr-time{font-size:10px;font-family:var(--mono);color:var(--muted);margin-left:auto}
+  .hr-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.04em}
+  .hr-badge.sent{background:rgba(34,197,94,.15);color:#16a34a}
+  .hr-badge.open{background:rgba(251,191,36,.15);color:#d97706}
+  .hr-dauer{font-size:10px;color:var(--muted);font-family:var(--mono)}
+  .hr-items{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+  .hr-item{font-size:10px;background:var(--sur2);border-radius:4px;padding:2px 7px;color:var(--txt);font-weight:600}
+  .hist-empty{padding:40px;text-align:center;color:var(--muted);font-size:13px}
   .v-empty{color:var(--muted);font-size:14px;padding:40px;text-align:center;border:1px dashed var(--brd);border-radius:8px;max-width:440px}
   /* ── Virtual Printer ── */
   #vp-view{display:none;flex-direction:column;overflow-y:auto;height:calc(100vh - var(--hh));padding:20px;width:100%}
@@ -334,6 +356,7 @@ export function getHTML() {
       <button class="tab active" id="tO" onclick="sv('orders')">Bestellungen</button>
       <button class="tab"        id="tP" onclick="sv('products')">Produkte</button>
       <button class="tab"        id="tV" onclick="sv('virtual')">Virtuell</button>
+      <button class="tab"        id="tH" onclick="sv('history')">Verlauf</button>
     </div>
     <div class="ws-dot" id="wsDot"></div>
   </header>
@@ -361,6 +384,13 @@ export function getHTML() {
     <div class="vp-empty">⏳ Lade Bons…</div>
   </div>
 </div>
+</div>
+
+<div id="histView">
+  <div class="hist-toolbar" id="histToolbar">
+    <span class="hist-toolbar-title">Kellner</span>
+  </div>
+  <div class="hist-list" id="histList"><div class="hist-empty">Lade Verlauf…</div></div>
 </div>
 
 <!-- Drucker-Konfigurations-Modal -->
