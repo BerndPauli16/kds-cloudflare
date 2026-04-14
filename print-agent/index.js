@@ -563,11 +563,74 @@ function buildTicketBuffer(p) {
   return Buffer.concat(parts);
 }
 
-function sendToPrinter(buf) {
+// ── Drucker-Port prüfen ────────────────────────────────────────────────
+function checkPrinterPort(ip, port, timeoutMs) {
+  return new Promise((resolve) => {
+    const sock = new net.Socket();
+    const t = setTimeout(() => { sock.destroy(); resolve(false); }, timeoutMs || 800);
+    sock.connect(port, ip, () => { clearTimeout(t); sock.end(); resolve(true); });
+    sock.on('error', () => { clearTimeout(t); resolve(false); });
+  });
+}
+
+// ── Auto-Discovery: scannt /24-Subnetz nach Port 9100 ──────────────────
+async function discoverPrinter() {
+  const os = require('os');
+  const ifaces = os.networkInterfaces();
+  let baseIp = null;
+  // Eigene lokale IP finden
+  for (const name of Object.keys(ifaces)) {
+    for (const iface of ifaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        const parts = iface.address.split('.');
+        baseIp = parts.slice(0,3).join('.');
+        break;
+      }
+    }
+    if (baseIp) break;
+  }
+  if (!baseIp) return null;
+  console.log('[DRUCKER] Suche Drucker in ' + baseIp + '.0/24 auf Port ' + CFG.printerPort + '...');
+  // Parallel scannen in Batches
+  const candidates = [];
+  for (let i = 1; i <= 254; i++) candidates.push(baseIp + '.' + i);
+  const BATCH = 30;
+  for (let b = 0; b < candidates.length; b += BATCH) {
+    const batch = candidates.slice(b, b+BATCH);
+    const results = await Promise.all(batch.map(ip => checkPrinterPort(ip, CFG.printerPort, 600).then(ok => ok ? ip : null)));
+    const found = results.filter(Boolean);
+    if (found.length > 0) {
+      console.log('[DRUCKER] Gefunden: ' + found[0]);
+      return found[0];
+    }
+  }
+  return null;
+}
+
+// ── Drucker senden mit Auto-Fallback ───────────────────────────────────
+async function sendToPrinter(buf) {
+  // Erst konfigurierte IP versuchen
+  const ok = await checkPrinterPort(CFG.printerIp, CFG.printerPort, 2000);
+  if (!ok) {
+    console.log('[DRUCKER] ' + CFG.printerIp + ':' + CFG.printerPort + ' nicht erreichbar – Auto-Discovery...');
+    const found = await discoverPrinter();
+    if (found) {
+      CFG.printerIp = found;
+      console.log('[DRUCKER] Neue Drucker-IP gespeichert: ' + found);
+      // Neue IP an Worker melden
+      if (CFG.workerUrl) {
+        fetch(CFG.workerUrl + '/api/config', {
+          method: 'POST', headers: {'Content-Type':'application/json','X-API-Key':CFG.apiKey},
+          body: JSON.stringify({ printerIp: found })
+        }).catch(()=>{});
+      }
+    } else {
+      throw new Error('Drucker nicht gefunden im Netzwerk');
+    }
+  }
   return new Promise((resolve, reject) => {
     const sock = new net.Socket();
     const timer = setTimeout(() => { sock.destroy(); reject(new Error('Drucker Timeout')); }, 6000);
-
     sock.connect(CFG.printerPort, CFG.printerIp, () => {
       sock.write(buf, () => { clearTimeout(timer); sock.end(); resolve(); });
     });
@@ -683,6 +746,22 @@ async function pollJobs() {
 }
 
 if (CFG.workerUrl && CFG.apiKey) {
+  // Eigene IP beim Start an Worker melden
+  (function reportOwnIp() {
+    const os = require('os');
+    const ifaces = os.networkInterfaces();
+    for (const name of Object.keys(ifaces)) {
+      for (const iface of ifaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          fetch(CFG.workerUrl + '/api/agent', {
+            method: 'POST', headers: {'Content-Type':'application/json','X-API-Key':CFG.apiKey},
+            body: JSON.stringify({ ip: iface.address, stationId: CFG.stationId })
+          }).catch(()=>{});
+          break;
+        }
+      }
+    }
+  })();
   loadRemoteConfig();
   setInterval(loadRemoteConfig, 5000);
   console.log(`[POLLER] Startet – alle 3s`);
