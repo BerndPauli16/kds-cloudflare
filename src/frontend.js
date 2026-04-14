@@ -714,6 +714,7 @@ function sv(v){
   document.getElementById('tP').classList.toggle('active',v==='products');
   document.getElementById('tV').classList.toggle('active',v==='virtual');
   document.getElementById('main').classList.toggle('products-view',v==='products');
+  document.getElementById('main').style.display = v==='virtual' ? 'none' : '';
   const vpView=document.getElementById('vp-view');
   if(vpView){vpView.classList.toggle('active',v==='virtual');if(v==='virtual'){vpLoad();vpStartTimer();}else if(VP.timer){clearInterval(VP.timer);VP.timer=null;}}
   render();
@@ -1021,7 +1022,7 @@ async function vInit() {
   try{const r=await fetch('/api/pause-state');const d=await r.json();vPaused=d.paused||false;vRenderPause();}catch(e){}
 }
 vInit();
-setInterval(()=>{ if(S.view==='virtuell') vLoadBons(); },5000);
+setInterval(()=>{ if(S.view==='virtual') vLoadBons(); },5000);
 
 </script>
 </body>
