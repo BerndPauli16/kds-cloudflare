@@ -386,12 +386,6 @@ export function getHTML() {
 </div>
 </div>
 
-<div id="histView">
-  <div class="hist-toolbar" id="histToolbar">
-    <span class="hist-toolbar-title">Kellner</span>
-  </div>
-  <div class="hist-list" id="histList"><div class="hist-empty">Lade Verlauf…</div></div>
-</div>
 
 <!-- Drucker-Konfigurations-Modal -->
 <div class="modal-overlay" id="cfgModal" onclick="if(event.target===this)closeCfg()">
