@@ -682,27 +682,33 @@ function connectWS(){
 let VP={type:'in',paused:false,timer:null};
 async function vpLoad(){
   try{
-    const [bRes,sRes]=await Promise.all([fetch('/api/bons?type='+VP.type+'&limit=3'),fetch('/api/bons/state')]);
-    const bons=await bRes.json(); const state=await sRes.json();
+    var apiType=VP.type==='in'?'incoming':'outgoing';
+    var bRes=await fetch('/api/bon-log?type='+apiType+'&limit=3');
+    var sRes=await fetch('/api/bons/state');
+    var bons=await bRes.json();
+    var state=await sRes.json();
     VP.paused=state.paused||false; vpUpdatePlayBtn();
-    const el=document.getElementById('vpBons');
-    if(!bons||!bons.length){el.innerHTML='<div class="vp-empty">📭 Keine Bons vorhanden</div>';return;}
-    el.innerHTML=bons.map(b=>{
-      let d={};try{d=JSON.parse(b.summary);}catch(e){}
-      const t=new Date(b.created_at);
-      const ts=t.toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      return '<div class="bon-card">' +
-        '<div class="bon-card-body">' +
-          '<div class="bon-card-hdr"><span class="bon-num">#'+(d.ticketNumber||b.id)+'</span><span class="bon-time">'+ts+'</span></div>'+
-          '<div class="bon-items">'+(d.items||'—')+'</div>'+
-          (d.table&&d.table!=='—'?'<div class="bon-table">Tisch: '+d.table+'</div>':'')+
-        '</div>'+
-        '<button class="bon-del" onclick="vpDelete('+b.id+')">✕</button>'+
-      '</div>';
+    var el=document.getElementById('vpBons');
+    if(!bons||!bons.length){el.innerHTML='<div class="vp-empty">Keine Bons vorhanden</div>';return;}
+    el.innerHTML=bons.map(function(b){
+      var t=new Date(b.created_at);
+      var ts=t.toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      var lines=(b.preview||'').split('\n').filter(function(l){return l.trim();});
+      var itemsHtml=lines.map(function(l){
+        if(l.indexOf('## ')===0){
+          var txt=l.slice(3).trim();
+          var m=txt.match(/(\d+)[x]?\s+(.+)/);
+          if(m) return '<div class="bon-item">'+m[1]+'x '+m[2]+'</div>';
+          return '<div class="bon-item">'+txt+'</div>';
+        }
+        return '<div class="bon-small">'+l+'</div>';
+      }).join('');
+      var badge=VP.type==='in'?'<span class="bon-badge in">EINGANG</span>':'<span class="bon-badge out">AUSGANG</span>';
+      return '<div class="bon-card"><div class="bon-card-body"><div class="bon-card-hdr"><div>'+badge+'<span class="bon-ts"> '+ts+'</span></div><button class="bon-del" onclick="vpDelete('+b.id+')">x</button></div><div class="bon-items">'+itemsHtml+'</div></div><div class="bon-cut"></div></div>';
     }).join('');
-  }catch(e){console.error(e);}
+  }catch(e){document.getElementById('vpBons').innerHTML='<div class="vp-empty">Fehler</div>';}
 }
-function vpType(t){VP.type=t;document.getElementById('vpIn').classList.toggle('active',t==='in');document.getElementById('vpOut').classList.toggle('active',t==='out');vpLoad();}
+
 async function vpTogglePlay(){VP.paused=!VP.paused;vpUpdatePlayBtn();await fetch('/api/bons/state',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':API_KEY},body:JSON.stringify({paused:VP.paused})});}
 function vpUpdatePlayBtn(){const btn=document.getElementById('vpPlay');const icon=document.getElementById('vpPlayIcon');const lbl=document.getElementById('vpPlayLabel');if(VP.paused){btn.className='vp-play paused';icon.textContent='⏸';lbl.textContent='PAUSIERT';}else{btn.className='vp-play playing';icon.textContent='▶';lbl.textContent='AKTIV';}}
 async function vpDelete(id){await fetch('/api/bons/'+id,{method:'DELETE',headers:{'X-API-Key':API_KEY}});vpLoad();}
