@@ -183,6 +183,10 @@ window.addEventListener('resize',applyT);
 const PINS = JSON.parse(localStorage.getItem('kds_pins') || '{}');
 function savePins(){ localStorage.setItem('kds_pins', JSON.stringify(PINS)); }
 
+// Farben für ALLE Produkte (auch nicht-gepinnte) – bleiben erhalten
+const COLORS = JSON.parse(localStorage.getItem('kds_colors') || '{}');
+function saveColors(){ localStorage.setItem('kds_colors', JSON.stringify(COLORS)); }
+
 function movePin(name, dir) {
   if (!PINS[name]) return;
   const sorted = Object.entries(PINS).sort((a,b)=>a[1].slot-b[1].slot);
@@ -212,10 +216,13 @@ function togglePin(name) {
 }
 
 function setPinColor(name, color) {
-  if (!PINS[name]) return;
-  PINS[name].color = color;
-  savePins();
-  // Nur dieses Kartenbackground updaten
+  // Farbe für ALLE Produkte speichern (nicht nur gepinnte)
+  COLORS[name] = color;
+  saveColors();
+  if (PINS[name]) {
+    PINS[name].color = color;
+    savePins();
+  }
   const card = document.querySelector('[data-prod="'+name.replace(/"/g,'&quot;')+'"]');
   if (card) applyPinColor(card, color);
 }
@@ -392,7 +399,7 @@ function rProducts(){
     const pin=PINS[n];
     const isPinned=!!pin;
     const isZero=tot<=0;
-    const color=pin&&pin.color?pin.color:null;
+    const color=COLORS[n]||(pin&&pin.color?pin.color:null);
     const g=document.createElement('div');
     g.className='pg'+(isPinned?' pinned-card':'')+(isZero?' zero':'');
     g.dataset.prod=n;
@@ -410,7 +417,7 @@ function rProducts(){
         +'</div>'
         +(isPinned?'<button class="move-btn right" title="Nach rechts">▶</button>':'<div style="width:38px"></div>')
       +'</div>';
-    if (isPinned) applyPinColor(g, color);
+    if (color) applyPinColor(g, color);
     g.querySelector('.pin-btn').addEventListener('click',e=>{e.stopPropagation();togglePin(n);});
     const ci=g.querySelector('.color-inp');
     const cb=g.querySelector('.color-btn');
