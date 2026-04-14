@@ -985,46 +985,15 @@ async function vClearAll() {
   vLoadBons();
 }
 function vRenderPreview(preview) {
-  if(!preview) return '<span class="bon-small">–</span>';
-  return preview.split('\n').filter(l=>l.trim()).map(l=>{
-    if(l.startsWith('## ')) {
-      const txt = l.slice(3).trim();
-      const m = txt.match(/^(\d+)[x×]?\s+(.+)$/) || txt.match(/^(\d+)\s+(.+)$/);
-      if(m) return '<div class="bon-item">'+m[1]+'× '+m[2]+'</div>';
+  if(!preview) return '<span class="bon-small">-</span>';
+  var NL = String.fromCharCode(10);
+  return preview.split(NL).filter(function(l){return l.trim();}).map(function(l){
+    if(l.indexOf('## ') === 0) {
+      var txt = l.slice(3).trim();
+      var m = txt.match(/^(\d+)[x]?\s+(.+)$/) || txt.match(/^(\d+)\s+(.+)$/);
+      if(m) return '<div class="bon-item">'+m[1]+'x '+m[2]+'</div>';
       return '<div class="bon-item">'+txt+'</div>';
     }
     return '<div class="bon-small">'+l+'</div>';
   }).join('');
-}
-async function vLoadBons() {
-  try {
-    const res = await fetch('/api/bon-log?type='+vMode+'&limit=3');
-    const bons = await res.json();
-    const list = document.getElementById('vBonList');
-    if(!bons||!bons.length){
-      list.innerHTML='<div class="v-empty">Keine '+(vMode==='incoming'?'eingehenden':'ausgehenden')+' Bons</div>';return;
-    }
-    list.innerHTML = bons.map(bon=>{
-      const time = bon.created_at ? new Date(bon.created_at).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '–';
-      const badge = vMode==='incoming'?'<span class="bon-badge in">EINGANG</span>':'<span class="bon-badge out">AUSGANG</span>';
-      return '<div class="bon-card">'+
-        '<div class="bon-head">'+
-          '<div class="bon-meta">'+badge+'<span class="bon-time">'+time+'</span></div>'+
-          '<button class="bon-del" onclick="vDeleteBon('+bon.id+')">✕</button>'+
-        '</div>'+
-        '<div class="bon-body">'+vRenderPreview(bon.preview)+'</div>'+
-        '<div class="bon-cut"></div>'+
-      '</div>';
-    }).join('');
-  } catch(e){document.getElementById('vBonList').innerHTML='<div class="v-empty">Fehler</div>';}
-}
-async function vInit() {
-  try{const r=await fetch('/api/pause-state');const d=await r.json();vPaused=d.paused||false;vRenderPause();}catch(e){}
-}
-vInit();
-setInterval(()=>{ if(S.view==='virtual') vLoadBons(); },5000);
-
-</script>
-</body>
-</html>`;
 }
