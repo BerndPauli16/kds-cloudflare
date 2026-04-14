@@ -521,7 +521,7 @@ function buildTicketBuffer(p) {
   // ── Kopfzeile ────────────────────────────────
   parts.push(escBuf(ESC, 0x61, 0x01));     // Zentriert
   parts.push(escBuf(ESC, 0x45, 0x01));     // Bold ON
-  txt(p.station_name || 'BESTELLUNG');
+  txt('KELLNER: ' + (p.station_name || 'BESTELLUNG'));
   parts.push(escBuf(ESC, 0x45, 0x00));     // Bold OFF
   line();
 
@@ -554,7 +554,10 @@ function buildTicketBuffer(p) {
   }
 
   // ── VON-Sektion (nur bei Teildruck) ──────────
-  if (p.partial && p.all_items && p.all_items.length > 0) {
+  // Nur zeigen wenn wirklich Teildruck: gedruckte Artikel < alle Artikel
+  var printedQty = (p.items||[]).reduce(function(s,i){return s+i.quantity;},0);
+  var allQty = (p.all_items||[]).reduce(function(s,i){return s+i.quantity;},0);
+  if (p.partial && p.all_items && p.all_items.length > 0 && printedQty < allQty) {
     line();
     parts.push(escBuf(ESC, 0x61, 0x01));   // Zentriert
     parts.push(escBuf(ESC, 0x45, 0x01));   // Bold ON
@@ -737,7 +740,9 @@ async function pollJobs() {
           var printedItems = (job.payload.items||[])
             .map(function(i){ return '## ' + i.quantity + 'x  ' + i.product_name; }).join(NL);
           // Alle Artikel des Bons (fuer EIN TEIL VON Sektion)
-          var hasAllItems = job.payload.partial && job.payload.all_items && job.payload.all_items.length > 0;
+          var printedTot = (job.payload.items||[]).reduce(function(x,i){return x+i.quantity;},0);
+          var allTot = (job.payload.all_items||[]).reduce(function(x,i){return x+i.quantity;},0);
+          var hasAllItems = job.payload.partial && job.payload.all_items && job.payload.all_items.length > 0 && printedTot < allTot;
           var allItemsText = hasAllItems
             ? (job.payload.all_items||[]).map(function(i){ return String(i.quantity).padStart(2) + 'x  ' + i.product_name; }).join(NL)
             : '';
