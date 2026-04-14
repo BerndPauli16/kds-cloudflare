@@ -417,8 +417,12 @@ function sv(v){
   document.getElementById('tO').classList.toggle('active',v==='orders');
   document.getElementById('tP').classList.toggle('active',v==='products');
   document.getElementById('tV').classList.toggle('active',v==='virtual');
+  document.getElementById('tH') && document.getElementById('tH').classList.toggle('active',v==='history');
+  var hv=document.getElementById('histView');
+  if(hv) hv.classList.toggle('active',v==='history');
   document.getElementById('main').classList.toggle('products-view',v==='products');
-  document.getElementById('main').style.display = v==='virtual' ? 'none' : '';
+  document.getElementById('main').style.display = (v==='virtual'||v==='history') ? 'none' : '';
+  if(v==='history') histLoad();
   const vpView=document.getElementById('vp-view');
   if(vpView){vpView.classList.toggle('active',v==='virtual');if(v==='virtual'){vpLoad();vpStartTimer();}else if(VP.timer){clearInterval(VP.timer);VP.timer=null;}}
   render();
@@ -708,6 +712,78 @@ function vRenderPreview(preview) {
     }
     return '<div class="bon-small">'+l+'</div>';
   }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  BESTELLVERLAUF
+// ═══════════════════════════════════════════════════════
+var HIST = { kellner: null };
+
+async function histLoad() {
+  var list = document.getElementById('histList');
+  if(!list) return;
+  list.innerHTML = '<div class="hist-empty">Lade…</div>';
+  try {
+    var url = '/api/history?limit=100' + (HIST.kellner ? '&kellner=' + encodeURIComponent(HIST.kellner) : '');
+    var r = await fetch(url);
+    var d = await r.json();
+    // Kellner-Buttons rendern
+    histRenderKellner(d.kellnerList || []);
+    // Tickets rendern
+    if(!d.tickets || !d.tickets.length) {
+      list.innerHTML = '<div class="hist-empty">Keine Bestellungen</div>';
+      return;
+    }
+    list.innerHTML = d.tickets.map(function(t) {
+      var isSent = t.printed_at || t.status === 'done';
+      var boniert = t.created_at ? new Date(t.created_at).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '–';
+      var datum = t.created_at ? new Date(t.created_at).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit'}) : '';
+      var gedruckt = t.printed_at ? new Date(t.printed_at).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : null;
+      var badge = isSent
+        ? '<span class="hr-badge sent">✓ ' + (gedruckt || 'gedruckt') + '</span>'
+        : '<span class="hr-badge open">⏳ offen</span>';
+      var dauer = isSent && t.wait_mins !== undefined
+        ? '<span class="hr-dauer">'+t.wait_mins+' min</span>' : '';
+      var tisch = t.table_number ? 'Tisch ' + t.table_number : t.ticket_number;
+      var kel = t.kellner ? '<span class="hr-kel">'+t.kellner+'</span>' : '';
+      var bon = '<span class="hr-bon">#'+t.ticket_number+'</span>';
+      var items = (t.items||[]).map(function(i){
+        return '<span class="hr-item">'+i.quantity+'× '+i.product_name+'</span>';
+      }).join('');
+      return '<div class="hr">'+
+        '<div class="hr-head">'+
+          '<span class="hr-tisch">'+tisch+'</span>'+
+          kel+bon+
+          '<span class="hr-time">'+datum+' '+boniert+'</span>'+
+        '</div>'+
+        '<div class="hr-head" style="margin-top:2px">'+
+          badge+dauer+
+        '</div>'+
+        (items ? '<div class="hr-items">'+items+'</div>' : '')+
+      '</div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="hist-empty">Fehler beim Laden</div>';
+  }
+}
+
+function histRenderKellner(list) {
+  var tb = document.getElementById('histToolbar');
+  if(!tb) return;
+  tb.innerHTML = '<span class="hist-toolbar-title">Kellner:</span>';
+  // "Alle" Button
+  var allBtn = document.createElement('button');
+  allBtn.className = 'kl-btn' + (HIST.kellner === null ? ' active' : '');
+  allBtn.textContent = 'Alle';
+  allBtn.onclick = function() { HIST.kellner = null; histLoad(); };
+  tb.appendChild(allBtn);
+  list.forEach(function(k) {
+    var btn = document.createElement('button');
+    btn.className = 'kl-btn' + (HIST.kellner === k ? ' active' : '');
+    btn.textContent = k;
+    btn.onclick = function() { HIST.kellner = k; histLoad(); };
+    tb.appendChild(btn);
+  });
 }
 
 async function vInit() {
