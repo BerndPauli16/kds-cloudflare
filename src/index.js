@@ -4,6 +4,7 @@
 import { KDSRoom }    from './kds-room.js';
 import { getHTML }    from './frontend.js';
 import { getPrinterHTML } from './printer.js';
+import appJs from './app.js';
 
 export { KDSRoom };
 
@@ -29,6 +30,13 @@ export default {
 
     if (url.pathname.startsWith('/api/')) {
       return handleAPI(request, env, url, method);
+    }
+
+    // /app.js - JavaScript als separate Datei
+    if (url.pathname === '/app.js') {
+      return new Response(appJs, {
+        headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' },
+      });
     }
 
     // Beide Domains → gleiches Frontend (Bestellungen + Produkte + Virtuell)
