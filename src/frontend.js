@@ -240,9 +240,10 @@ export function getHTML() {
   .bon-del2:hover{color:#ef4444}
   .bon-list2{display:flex;flex-direction:column;gap:14px;padding:16px;max-width:500px}
   /* ── Bestellverlauf ── */
-  #histView{display:none;overflow-y:auto;height:calc(100vh - var(--hh));padding:0;grid-row:2;grid-column:1/-1}
+  #histView{display:none;flex-direction:column;height:calc(100vh - var(--hh));padding:0;grid-row:2;grid-column:1/-1}
+  .hist-topbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--brd);flex-shrink:0;flex-wrap:wrap}
   #histView.active{display:flex;flex-direction:column}
-  .hist-toolbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--brd);flex-shrink:0;flex-wrap:wrap}
+  .hist-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .hist-toolbar-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   .kl-btn{background:var(--sur2);border:1px solid var(--brd);border-radius:20px;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:4px 12px;transition:all .15s;white-space:nowrap}
   .kl-btn.active{background:var(--amber);color:#000;border-color:var(--amber)}
@@ -261,7 +262,7 @@ export function getHTML() {
   .hr-items{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
   .hr-item{font-size:11px;background:var(--sur2);border-radius:4px;padding:2px 8px;color:var(--txt);font-weight:600;font-family:var(--font);letter-spacing:.02em}
   .hist-empty{padding:40px;text-align:center;color:var(--muted);font-size:13px}
-  .hist-tisch-wrap{display:flex;align-items:center;gap:6px;border-left:1px solid var(--brd);padding-left:10px;margin-left:4px}
+  .hist-tisch-wrap{display:flex;align-items:center;gap:6px;border-left:1px solid var(--brd);padding-left:10px;margin-left:6px;flex-shrink:0}
   .hist-tisch-lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   .hist-tisch-inp{background:var(--sur2);border:1px solid var(--brd);border-radius:6px;color:var(--txt);font-family:var(--mono);font-size:13px;font-weight:700;width:60px;padding:3px 8px;text-align:center;outline:none}
   .hist-tisch-inp:focus{border-color:var(--amber)}
@@ -390,7 +391,13 @@ export function getHTML() {
   </div>
 </div>
 <div id="histView">
-  <div class="hist-toolbar" id="histToolbar"></div>
+  <div class="hist-toolbar" id="histToolbar">
+    <span class="hist-toolbar-title">Kellner:</span>
+  </div>
+  <div class="hist-tisch-wrap" style="flex-shrink:0">
+    <span class="hist-tisch-lbl">Tisch:</span>
+    <input type="text" id="histTischInp" class="hist-tisch-inp" placeholder="Nr." maxlength="6">
+  </div>
   <div class="hist-list" id="histList"><div class="hist-empty">Lade Verlauf…</div></div>
 </div>
 </div>
