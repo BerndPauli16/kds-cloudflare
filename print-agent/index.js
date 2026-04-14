@@ -144,12 +144,23 @@ const httpServer = http.createServer((req, res) => {
 
     // Einkommenden Bon loggen + KDS Worker (wenn nicht paused)
     setImmediate(async () => {
-      // Kompletter Originaltext aus XML - nichts weglassen, nichts hinzufügen
+      // Originaltext aus XML 1:1 wie gedruckt
+      // Grosse Texte (width=2 height=2) = Artikel → fett mit ## markieren
       const NL = '\n';
-      const preview = (body.match(/<text[^>]*>([\s\S]*?)<\/text>/gi)||[])
-        .map(function(m){ return m.replace(/<[^>]+>/g,'').replace(/&#10;/g,'').trim(); })
-        .filter(function(l){ return l.length > 0; })
-        .join(NL);
+      var incTexts = [];
+      var incRe = /<text([^>]*)>([\s\S]*?)<\/text>/gi;
+      var incM;
+      while ((incM = incRe.exec(body)) !== null) {
+        var incAttrs = incM[1];
+        var incTxt = incM[2].replace(/&#10;/g,'').trim();
+        if (!incTxt) continue;
+        if (/width="2"/.test(incAttrs) && /height="2"/.test(incAttrs)) {
+          incTexts.push('## ' + incTxt);
+        } else {
+          incTexts.push(incTxt);
+        }
+      }
+      const preview = incTexts.join(NL);
 
       if (CFG.workerUrl) {
         // Einkommenden Bon speichern
