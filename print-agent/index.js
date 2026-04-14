@@ -142,8 +142,6 @@ const httpServer = http.createServer((req, res) => {
     res.end(soapResp);
 
     // Nur noch KDS Worker — kein automatischer Druck mehr!
-    require('fs').writeFileSync('/tmp/last_bon.xml', body, 'utf8');
-    console.log('[DEBUG] XML gespeichert /tmp/last_bon.xml');
     setImmediate(async () => {
       if (CFG.workerUrl) {
         parseAndForward(Buffer.from(body)).catch(e => console.error('[PARSER]', e.message));
@@ -281,15 +279,49 @@ function parseTicket(lines) {
 //  Parsed Ticket → Cloudflare Worker
 // ════════════════════════════════════════════════
 function parseEposXml(xmlStr) {
-  const textMatches = xmlStr.match(/<text[^>]*>([\s\S]*?)<\/text>/gi) || [];
-  const lines = textMatches
-    .map(m => m.replace(/<[^>]+>/g,'').replace(/&#10;/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim())
-    .filter(l => l.length > 0);
-
   const items = [];
-  let inItemBlock = false;
   let tableNumber = null, ticketNumber = null, datum = null, uhrzeit = null, senderName = null;
 
+  // ── Format 1: Bonierbon (Küchen-/Schankbon) ──────────────────────────────
+  // Erkennungsmerkmal: "Bonierbon" im Header
+  if (xmlStr.includes('Bonierbon') || xmlStr.includes('bonierbon')) {
+    // Bon-Nummer: <text>Nummer  R2026...</text>
+    const numM = xmlStr.match(/Nummer\s+([A-Z0-9]+)/);
+    if (numM) ticketNumber = numM[1];
+
+    // Zeit + Datum: <text>16:51:44   14.04.2026</text>
+    const timeM = xmlStr.match(/(\d{2}:\d{2}:\d{2})\s+(\d{2}\.\d{2}\.\d{4})/);
+    if (timeM) { uhrzeit = timeM[1]; datum = timeM[2]; }
+
+    // Benutzer
+    const userM = xmlStr.match(/Benutzer:\s*(.+?)&#10;/);
+    if (userM) senderName = userM[1].trim();
+
+    // Artikel: <text width="2" height="2">1 Spritzer&#10;</text>
+    // Format: Zahl + Leerzeichen + Produktname
+    const bigTextRe = /<text[^>]*width="2"[^>]*height="2"[^>]*>([^<]+)<\/text>/gi;
+    let m;
+    while ((m = bigTextRe.exec(xmlStr)) !== null) {
+      const txt = m[1].replace(/&#10;/g,'').trim();
+      const itemM = txt.match(/^(\d+)\s+(.+)$/);
+      if (itemM) {
+        const qty = parseInt(itemM[1]);
+        const name = itemM[2].trim();
+        if (qty > 0 && qty < 1000 && name.length > 0 && name.length < 80)
+          items.push({ product_name: name, quantity: qty, extras: [] });
+      }
+    }
+    return { items, tableNumber, ticketNumber, datum, uhrzeit, senderName };
+  }
+
+  // ── Format 2: Rechnung / Barrechnung ─────────────────────────────────────
+  const textMatches = xmlStr.match(/<text[^>]*>([\s\S]*?)<\/text>/gi) || [];
+  const lines = textMatches
+    .map(m => m.replace(/<[^>]+>/g,'').replace(/&#10;/g,'').replace(/&amp;/g,'&')
+               .replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim())
+    .filter(l => l.length > 0);
+
+  let inItemBlock = false;
   for (const line of lines) {
     const datumM = line.match(/Datum\s+([\d.]+)\s+([\d:]+)/i);
     if (datumM) { datum = datumM[1]; uhrzeit = datumM[2]; continue; }
@@ -308,7 +340,7 @@ function parseEposXml(xmlStr) {
       const m1 = line.match(/^(\d+)\s+([^\d].+?)(?:\s{3,}.*)?$/);
       if (m1) {
         const qty = parseInt(m1[1]), name = m1[2].trimEnd();
-        if (qty>0 && qty<1000 && name.length>1 && name.length<80 && !/Rabatt|Nachlass|Skonto/i.test(name))
+        if (qty>0 && qty<1000 && name.length>1 && name.length<80 && !/Rabatt|Nachlass/i.test(name))
           { items.push({product_name:name, quantity:qty, extras:[]}); continue; }
       }
       const m2 = line.match(/^(.+?)\s{2,}(\d+)\s*$/);
@@ -317,12 +349,11 @@ function parseEposXml(xmlStr) {
         if (qty>0 && qty<1000 && name.length>1 && name.length<80)
           { items.push({product_name:name, quantity:qty, extras:[]}); continue; }
       }
-      if (items.length>0 && /^\s{2,}/.test(line) && !/^\s*\d/.test(line))
-        items[items.length-1].extras.push(line.trim());
     }
   }
-  return {items, tableNumber, ticketNumber, datum, uhrzeit, senderName};
+  return { items, tableNumber, ticketNumber, datum, uhrzeit, senderName };
 }
+
 
 async function parseAndForward(rawBuf) {
   const xmlStr = rawBuf.toString('utf8');
