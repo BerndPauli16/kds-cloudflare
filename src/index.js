@@ -31,13 +31,7 @@ export default {
       return handleAPI(request, env, url, method);
     }
 
-    // schankmonitor.team24.training → Virtueller Drucker
-    const host = request.headers.get('host') || '';
-    if (host.includes('schankmonitor')) {
-      const { getSchankHTML } = await import('./schank.js');
-      return new Response(getSchankHTML(), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-    }
-
+    // Beide Domains → gleiches Frontend (Bestellungen + Produkte + Virtuell)
     return new Response(getHTML(), {
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
