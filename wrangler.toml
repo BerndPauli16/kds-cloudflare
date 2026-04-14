@@ -5,9 +5,11 @@ compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 # ─── Custom Domain ──────────────────────────────────────────
-routes = [
-  { pattern = "kds.team24.training/*", custom_domain = true }
-]
+[env.production]
+
+[[env.production.routes]]
+pattern = "kds.team24.training"
+custom_domain = true
 
 # ─── D1 Datenbank ───────────────────────────────────────────
 [[d1_databases]]
@@ -29,6 +31,3 @@ bindings = [
 [[migrations]]
 tag = "v1"
 new_classes = ["KDSRoom"]
-
-# ─── Secrets (via `wrangler secret put API_KEY`) ─────────────
-# API_KEY  → schützt den /api Endpunkt fuer den Print-Agent
