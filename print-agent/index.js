@@ -333,6 +333,19 @@ function sendToPrinter(buf) {
   });
 }
 
+
+async function loadRemoteConfig() {
+  if (!CFG.workerUrl) return;
+  try {
+    const res = await fetch(`${CFG.workerUrl}/api/config`);
+    const d = await res.json();
+    if (d && d.printerIp && d.printerIp !== CFG.printerIp) {
+      console.log(`[CONFIG] Drucker-IP aktualisiert: ${CFG.printerIp} -> ${d.printerIp}`);
+      CFG.printerIp = d.printerIp;
+    }
+  } catch(e) {}
+}
+
 async function pollJobs() {
   if (!CFG.workerUrl) return;
   try {
@@ -361,6 +374,8 @@ async function pollJobs() {
 }
 
 if (CFG.workerUrl && CFG.apiKey) {
+  loadRemoteConfig();
+  setInterval(loadRemoteConfig, 60000);
   console.log(`[POLLER] Startet – alle 3s`);
   pollJobs();
   setInterval(pollJobs, 3000);
