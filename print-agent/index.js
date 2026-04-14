@@ -107,7 +107,7 @@ const httpServer = http.createServer((req, res) => {
         await sendToPrinterRaw(escBuf);
         console.log(`[ePOS] ✓ Gedruckt (${escBuf.length} bytes)`);
         if (CFG.workerUrl) {
-          parseAndForward(escBuf).catch(e => console.error('[PARSER]', e.message));
+          parseAndForward(Buffer.from(body)).catch(e => console.error('[PARSER]', e.message));
         }
       } catch(e) {
         console.error('[ePOS] Druckfehler:', e.message);
