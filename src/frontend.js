@@ -388,8 +388,9 @@ export function getHTML() {
           <div class="accordion-body" id="aselloAccBody">
             <table class="asello-table">
               <tr><td>Typ</td><td>Epson TM-T88V/TM-T70II Ethernet</td></tr>
-              <tr><td>IP-Adresse</td><td id="aselloIp">192.168.192.70</td></tr>
+              <tr><td>IP-Adresse</td><td id="aselloIp"><b style="color:var(--amber)">print.team24.training</b></td></tr>
               <tr><td>Port</td><td>80</td></tr>
+              <tr><td style="color:var(--amber)">⚡ IMMER GÜLTIG</td><td style="font-size:10px;color:var(--muted)">Tunnel – funktioniert in jedem Netzwerk</td></tr>
               <tr><td>HTTPS verwenden</td><td><span class="tag-off">AUS</span></td></tr>
               <tr><td>Ohne Warten fortfahren</td><td><span class="tag-on">AN</span></td></tr>
               <tr><td>E-POS Device verwenden</td><td><span class="tag-off">AUS</span></td></tr>
