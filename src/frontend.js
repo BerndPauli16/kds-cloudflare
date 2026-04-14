@@ -149,7 +149,9 @@ export function getHTML() {
   .color-btn{position:absolute;top:7px;left:28px;width:15px;height:15px;border-radius:50%;border:2px solid rgba(255,255,255,.3);cursor:pointer;z-index:2;transition:transform .15s}
   .color-btn:hover{transform:scale(1.2)}
   .color-inp{position:absolute;opacity:0;width:0;height:0}
-  .pg{position:relative}
+  .pg{position:relative;display:flex;flex-direction:column}
+  .pg-footer{display:flex;align-items:center;justify-content:space-between;padding:3px 5px;background:rgba(0,0,0,.15);border-top:1px solid rgba(255,255,255,.07)}
+  .pg-center{display:flex;align-items:center;gap:5px}
   .pg.pinned-card{border-width:2px!important}
   .pg.zero{opacity:.45}
   .move-btn{position:absolute;bottom:6px;background:rgba(0,0,0,.25);border:none;color:rgba(255,255,255,.7);font-size:7px;cursor:pointer;padding:2px 5px;border-radius:3px;transition:all .15s;z-index:2;width:22px;text-align:center}
