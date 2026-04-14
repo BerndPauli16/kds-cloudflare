@@ -388,19 +388,23 @@ async function doTestPrint() {
   btn.textContent = '⏳ Drucke…';
   btn.disabled = true;
   cfgMsg('Testdruck wird gesendet…', 'info');
+  // Direkt zum Pi (lokales Netz) - Browser kann lokale IPs erreichen
+  const proxyIp   = document.getElementById('cfgProxyIp').value   || '192.168.192.70';
+  const charsPerLine = parseInt(document.getElementById('cfgChars').value) || 42;
   try {
-    const res = await fetch('/api/test-print', {
+    const res = await fetch('http://' + proxyIp + '/test-print', {
       method: 'POST',
-      headers: { 'X-API-Key': API_KEY }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ charsPerLine })
     });
-    const data = await res.json();
-    if (data.ok) {
-      cfgMsg('✓ Testdruck erfolgreich! Zeichen zählen und Zahl eintragen.', 'ok');
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) {
+      cfgMsg('✓ Testdruck erfolgreich! Zeichen zählen und eintragen.', 'ok');
     } else {
-      cfgMsg('Fehler: ' + (data.error || 'Unbekannt'), 'err');
+      cfgMsg('Fehler: ' + (data.error || 'Pi nicht erreichbar?'), 'err');
     }
   } catch(e) {
-    cfgMsg('Fehler: ' + e.message, 'err');
+    cfgMsg('Fehler: Pi nicht erreichbar (' + e.message + ')', 'err');
   } finally {
     btn.textContent = '🖨 Testdruck';
     btn.disabled = false;
