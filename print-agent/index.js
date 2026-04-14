@@ -66,8 +66,9 @@ const httpServer = http.createServer((req, res) => {
 
     // Status-Anfrage (GET oder leerer POST)
     if (req.method === 'GET' || body.length < 20) {
-      res.writeHead(200, {'Content-Type': 'text/xml; charset=utf-8'});
-      res.end('<?xml version="1.0" encoding="utf-8"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><epos-print:response xmlns:epos-print="http://www.epson-pos.com/schemas/2011/03/epos-print" success="true" code="SUCCESS" status="1814789376" battery="0"/></SOAP-ENV:Body></SOAP-ENV:Envelope>');
+      const resp = '<?xml version="1.0" encoding="utf-8"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><epos-print:response xmlns:epos-print="http://www.epson-pos.com/schemas/2011/03/epos-print" success="true" code="SUCCESS" status="1814789376" battery="0"/></SOAP-ENV:Body></SOAP-ENV:Envelope>';
+      res.writeHead(200, {'Content-Type': 'text/xml; charset=utf-8', 'Content-Length': Buffer.byteLength(resp), 'Connection': 'close'});
+      res.end(resp);
       return;
     }
 
@@ -75,8 +76,9 @@ const httpServer = http.createServer((req, res) => {
     console.log(`[ePOS] Druckjob empfangen (${body.length} bytes)`);
 
     // SOFORT antworten – asello nicht warten lassen
-    res.writeHead(200, {'Content-Type': 'text/xml; charset=utf-8'});
-    res.end('<?xml version="1.0" encoding="utf-8"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><epos-print:response xmlns:epos-print="http://www.epson-pos.com/schemas/2011/03/epos-print" success="true" code="SUCCESS" status="1814789376" battery="0"/></SOAP-ENV:Body></SOAP-ENV:Envelope>');
+    const soapResp = '<?xml version="1.0" encoding="utf-8"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><epos-print:response xmlns:epos-print="http://www.epson-pos.com/schemas/2011/03/epos-print" success="true" code="SUCCESS" status="1814789376" battery="0"/></SOAP-ENV:Body></SOAP-ENV:Envelope>';
+    res.writeHead(200, {'Content-Type': 'text/xml; charset=utf-8', 'Content-Length': Buffer.byteLength(soapResp), 'Connection': 'close'});
+    res.end(soapResp);
 
     // Drucken + KDS asynchron (nach Response)
     setImmediate(async () => {
