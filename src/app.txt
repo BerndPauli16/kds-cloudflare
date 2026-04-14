@@ -274,22 +274,70 @@ function applyPinColor(card, color) {
   }
 }
 
-async function init(){await Promise.all([loadT(),loadTot()]);connectWS();setInterval(loadT,30000);}
-async function loadT(){S.tickets=await fetch(S.station?'/api/tickets?station='+S.station:'/api/tickets').then(r=>r.json());render();}
-async function loadTot(){S.totals=await fetch(S.station?'/api/totals?station='+S.station:'/api/totals').then(r=>r.json());renderTot();}
+async function init(){
+  await Promise.all([loadT(),loadTot()]);
+  connectWS();
+  setInterval(loadT,15000); // Alle 15s statt 30s für schnelleres Recover
+  // Netzwerkwechsel: sofort neu laden wenn online
+  window.addEventListener('online', ()=>{
+    console.log('[NET] Online – reconnect WS + reload');
+    Promise.all([loadT(),loadTot()]);
+    if(!S.ws||S.ws.readyState>1) connectWS();
+  });
+  // Aus Standby/Hintergrund zurück: Daten sofort aktualisieren
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden){
+      Promise.all([loadT(),loadTot()]);
+      if(!S.ws||S.ws.readyState>1) connectWS();
+    }
+  });
+}
+async function loadT(){
+  try{
+    const r=await fetch(S.station?'/api/tickets?station='+S.station:'/api/tickets');
+    if(r.ok){S.tickets=await r.json();render();}
+  }catch(e){/* Netzwerk nicht verfügbar - still fail */}
+}
+async function loadTot(){
+  try{
+    const r=await fetch(S.station?'/api/totals?station='+S.station:'/api/totals');
+    if(r.ok){S.totals=await r.json();renderTot();}
+  }catch(e){}
+}
 
+var _wsRetry=1000;
 function connectWS(){
-  if(S.ws)S.ws.close();
+  if(S.ws){try{S.ws.close();}catch(e){}}
+  const dot=document.getElementById('wsDot');
+  dot.className='ws-dot err';
   const ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws?station='+(S.station||'all'));
   S.ws=ws;
-  const dot=document.getElementById('wsDot');
-  ws.onopen=()=>{dot.className='ws-dot ok';setInterval(()=>ws.readyState===1&&ws.send('{"type":"ping"}'),25000);};
-  ws.onclose=()=>{dot.className='ws-dot err';setTimeout(connectWS,3000);};
-  ws.onmessage=async({data})=>{
-    const m=JSON.parse(data);
-    if(m.type==='pong') return;
-    // 300ms warten damit D1 die Writes committed hat, dann sync
+  var ping=null;
+  ws.onopen=()=>{
+    dot.className='ws-dot ok';
+    _wsRetry=1000; // Reset Backoff
+    if(ping)clearInterval(ping);
+    ping=setInterval(()=>{if(ws.readyState===1)ws.send('{"type":"ping"}');},25000);
+    // Sofort Daten laden nach Reconnect
     Promise.all([loadT(),loadTot()]);
+  };
+  ws.onclose=()=>{
+    dot.className='ws-dot err';
+    if(ping)clearInterval(ping);
+    // Exponentielles Backoff: 1s → 2s → 4s → max 30s
+    setTimeout(connectWS, _wsRetry);
+    _wsRetry=Math.min(_wsRetry*2, 30000);
+  };
+  ws.onerror=()=>{
+    dot.className='ws-dot err';
+    try{ws.close();}catch(e){}
+  };
+  ws.onmessage=({data})=>{
+    try{
+      const m=JSON.parse(data);
+      if(m.type==='pong') return;
+      Promise.all([loadT(),loadTot()]);
+    }catch(e){}
   };
 }
 
