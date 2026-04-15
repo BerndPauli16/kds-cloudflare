@@ -155,6 +155,11 @@ async function handleAPI(request, env, url, method) {
           await env.DB.prepare('CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)').run();
           await env.DB.prepare('INSERT INTO kv_store (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(cfgKeyPost, val).run();
         });
+      // Immer auch global speichern als Fallback
+      if (stationPostParam) {
+        await env.DB.prepare('INSERT INTO kv_store (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value')
+          .bind('printer_config', val).run().catch(() => {});
+      }
       return jsonResponse({ ok: true });
     }
 
