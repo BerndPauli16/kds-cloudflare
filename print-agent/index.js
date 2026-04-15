@@ -151,6 +151,15 @@ const httpServer = http.createServer((req, res) => {
 
     // Status-Anfrage (GET oder leerer POST)
     if (req.method === 'GET' || body.length < 20) {
+      // Browser-Request → Redirect zum KDS Monitor mit Station-Filter
+      const accept = req.headers['accept'] || '';
+      if (req.method === 'GET' && accept.includes('text/html')) {
+        const redirectUrl = `${CFG.workerUrl}?station=${CFG.stationId}`;
+        res.writeHead(302, { 'Location': redirectUrl, 'Connection': 'close' });
+        res.end();
+        return;
+      }
+      // ePOS Status-Antwort fuer asello
       const resp = '<?xml version="1.0" encoding="utf-8"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><response xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print" success="true" code="SUCCESS" status="1814789376" battery="0"/></SOAP-ENV:Body></SOAP-ENV:Envelope>';
       res.writeHead(200, { ...CORS_HEADERS, 'Content-Type': 'text/xml; charset=utf-8', 'Content-Length': Buffer.byteLength(resp), 'Connection': 'close' });
       res.end(resp);
