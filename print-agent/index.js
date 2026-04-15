@@ -27,7 +27,7 @@ let jobCounter = 0;
 // ═══════════════════════════════════════════════
 function eposXmlToEscpos(xmlStr) {
   const ESC = 0x1b, GS = 0x1d, LF = 0x0a;
-  const parts = [Buffer.from([ESC, 0x40])]; // Init
+  const parts = [Buffer.from([ESC, 0x40]), Buffer.from([ESC, 0x74, 0x10])]; // Init + CP1252 (aeoeue)
 
   // Texte aus <text>...</text> extrahieren
   const textMatches = xmlStr.match(/<text[^>]*>([\s\S]*?)<\/text>/gi) || [];
@@ -35,7 +35,7 @@ function eposXmlToEscpos(xmlStr) {
     const inner = m.replace(/<[^>]+>/g, '')
       .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
       .replace(/&#10;/g,'\n').replace(/&#13;/g,'\r');
-    parts.push(Buffer.from(inner, 'utf8'));
+    parts.push(Buffer.from(inner, 'latin1')); // Latin-1 = PC858 fuer Umlaute
   }
 
   // Cut-Befehl
@@ -520,11 +520,11 @@ function buildTicketBuffer(p) {
 
   const line  = () => parts.push(Buffer.from('-'.repeat(Math.min(CFG.charsPerLine, 48)) + '\n'));
   const br    = () => parts.push(Buffer.from('\n'));
-  const txt   = (s) => parts.push(Buffer.from(s + '\n', 'utf8'));
+  const txt   = (s) => parts.push(Buffer.from(s + '\n', 'latin1')); // Latin-1 fuer Umlaute
 
   // Init + Zeichensatz UTF-8
   parts.push(escBuf(ESC, 0x40));           // ESC @ – Init
-  parts.push(escBuf(ESC, 0x74, 0x11));     // ESC t 17 – UTF-8 Code Page
+  parts.push(escBuf(ESC, 0x74, 0x10));     // ESC t 16 – CP1252 (aeoeue und ss)
 
   // ── Kopfzeile ────────────────────────────────
   parts.push(escBuf(ESC, 0x61, 0x01));     // Zentriert
