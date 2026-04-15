@@ -809,7 +809,7 @@ async function pollJobs() {
       }
     }
   } catch (e) {
-    _pollDelay = Math.min((_pollDelay || 3000) * 2, 30000);
+    _pollDelay = Math.min((_pollDelay || 1000) * 2, 30000);
     console.error('[POLLER] Fehler (retry in ' + _pollDelay + 'ms):', e.message);
   }
 }
@@ -834,7 +834,7 @@ if (CFG.workerUrl && CFG.apiKey) {
   sendHeartbeat(); // Sofort beim Start
   setInterval(sendHeartbeat, 30000); // Dann alle 30s
   loadRemoteConfig();
-  setInterval(loadRemoteConfig, 5000);
+  setInterval(loadRemoteConfig, 30000);
 
   // Self-Update: alle 5 Minuten auf neue Version prüfen
   const GITHUB_URL = 'https://raw.githubusercontent.com/BerndPauli16/kds-cloudflare/main/print-agent/index.js';
@@ -855,17 +855,17 @@ if (CFG.workerUrl && CFG.apiKey) {
   }
   setTimeout(checkSelfUpdate, 30000); // Erster Check nach 30s
   setInterval(checkSelfUpdate, 300000); // Dann alle 5 Minuten
-  console.log('[POLLER] Startet – alle 3s');
+  console.log('[POLLER] Startet – alle 1s');
   // Smarter Poller mit Backoff bei Netzwerkfehler
-  var _pollDelay = 3000;
+  var _pollDelay = 1000;
   var _pollOk = 0;
   function schedulePoll() {
     setTimeout(async function() {
       try {
         await pollJobs();
         _pollOk++;
-        if (_pollDelay > 3000) {
-          _pollDelay = 3000; // Reset nach erfolgreichen Polls
+        if (_pollDelay > 1000) {
+          _pollDelay = 1000; // Reset nach erfolgreichen Polls
           console.log('[POLLER] Verbindung wiederhergestellt');
         }
       } catch(e) {
