@@ -56,6 +56,7 @@ async function handleAPI(request, env, url, method) {
       requireApiKey(request, env);
       const ticket = await createTicket(env, await request.json());
       await broadcastUpdate(env, ticket.station_id, { type: 'ticket_created', ticket });
+      await broadcastUpdate(env, ticket.station_id, { type: 'print_job', stationId: ticket.station_id });
       return jsonResponse(ticket, 201);
     }
 
@@ -63,6 +64,7 @@ async function handleAPI(request, env, url, method) {
     if (printMatch && method === 'POST') {
       const result = await printTicket(env, parseInt(printMatch[1]));
       await broadcastUpdate(env, result.station_id, { type: 'ticket_printed', ticketId: parseInt(printMatch[1]) });
+      await broadcastUpdate(env, result.station_id, { type: 'print_job', stationId: result.station_id });
       return jsonResponse(result);
     }
 
@@ -71,6 +73,7 @@ async function handleAPI(request, env, url, method) {
       const body = await request.json();
       const result = await partialPrintTicket(env, parseInt(partialMatch[1]), body.items || []);
       await broadcastUpdate(env, result.station_id, { type: 'ticket_partial_printed', ticketId: parseInt(partialMatch[1]) });
+      await broadcastUpdate(env, result.station_id, { type: 'print_job', stationId: result.station_id });
       return jsonResponse(result);
     }
 
