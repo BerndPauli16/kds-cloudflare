@@ -103,18 +103,25 @@ async function handleAPI(request, env, url, method) {
       const { hostname, ip, stationId, printerIp: reportedPrinterIp } = body;
       const agentData = { hostname, ip, stationId, updated_at: new Date().toISOString() };
       if (reportedPrinterIp) agentData.printerIp = reportedPrinterIp;
+      const agentKey = stationId ? 'agent_info_' + stationId : 'agent_info';
       await env.DB.prepare(
-        "INSERT INTO kv_store (key, value) VALUES ('agent_info', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
-      ).bind(JSON.stringify(agentData)).run().catch(async () => {
-        await env.DB.prepare("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)").run();
-        await env.DB.prepare("INSERT INTO kv_store (key, value) VALUES ('agent_info', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify({ hostname, ip, updated_at: new Date().toISOString() })).run();
+        'INSERT INTO kv_store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value'
+      ).bind(agentKey, JSON.stringify(agentData)).run().catch(async () => {
+        await env.DB.prepare('CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)').run();
+        await env.DB.prepare('INSERT INTO kv_store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(agentKey, JSON.stringify({ hostname, ip, updated_at: new Date().toISOString() })).run();
       });
       return jsonResponse({ ok: true });
     }
 
     if (path === '/agent' && method === 'GET') {
-      const row = await env.DB.prepare("SELECT value FROM kv_store WHERE key='agent_info'").first().catch(() => null);
-      return jsonResponse(row ? JSON.parse(row.value) : null);
+      const stationParam = url.searchParams.get('station');
+      const agentKey = stationParam ? 'agent_info_' + stationParam : 'agent_info';
+      const row = await env.DB.prepare('SELECT value FROM kv_store WHERE key=?').bind(agentKey).first().catch(() => null);
+      if (!row) {
+        const fallback = await env.DB.prepare("SELECT value FROM kv_store WHERE key='agent_info'").first().catch(() => null);
+        return jsonResponse(fallback ? JSON.parse(fallback.value) : null);
+      }
+      return jsonResponse(JSON.parse(row.value));
     }
 
 

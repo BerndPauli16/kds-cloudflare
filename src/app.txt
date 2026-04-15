@@ -24,7 +24,7 @@ function openCfg() {
   var inp = document.getElementById('cfgDisplayName');
   if (inp) inp.value = localStorage.getItem('kds_display_name') || '';
   // Pi-IP vom Agent-Endpoint laden (vom Pi selbst gemeldet)
-  fetch('/api/agent').then(r=>r.json()).then(agent => {
+  fetch('/api/agent' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(agent => {
     if (agent && agent.ip) {
       document.getElementById('piIpDisplay').textContent = agent.ip;
       if (document.getElementById('aselloIp')) document.getElementById('aselloIp').textContent = agent.ip;
@@ -130,7 +130,7 @@ async function doScanPrinter() {
   if(btn) { btn.textContent='⏳'; btn.disabled=true; }
   try {
     // Pi-IP holen
-    const agentRes = await fetch('/api/agent');
+    const agentRes = await fetch('/api/agent' + (S.station ? '?station=' + S.station : ''));
     const agent = await agentRes.json();
     if(!agent || !agent.ip) { alert('Pi nicht erreichbar!'); return; }
     // Pi-Proxy triggern: DELETE request auf /scan-printer
@@ -217,13 +217,13 @@ window.addEventListener('resize',applyT);
   var _defaultName = location.hostname.split('.')[0];
   document.getElementById('mHost').textContent = _savedName || _defaultName;
   // IP vom Pi nachladen
-  fetch('/api/agent').then(r=>r.json()).then(d=>{
+  fetch('/api/agent' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{
     if(d&&d.ip) document.getElementById('mIp').textContent=d.ip;
   }).catch(()=>{});
   setInterval(()=>{
     fetch('/api/config').then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
 
-  fetch('/api/agent').then(r=>r.json()).then(d=>{
+  fetch('/api/agent' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{
       if(d&&d.hostname) document.getElementById('mHost').textContent=d.hostname;
       if(d&&d.ip)       document.getElementById('mIp').textContent=d.ip;
     }).catch(()=>{});
