@@ -92,12 +92,7 @@ const httpServer = http.createServer((req, res) => {
           CFG.printerIp = found;
           console.log('[SCAN] Drucker gefunden: ' + found);
           // Neue IP an Worker melden
-          if (CFG.workerUrl) {
-            fetch(CFG.workerUrl + '/api/config', {
-              method: 'POST', headers: {'Content-Type':'application/json','X-API-Key':CFG.apiKey},
-              body: JSON.stringify({ printerIp: found, printerPort: CFG.printerPort })
-            }).catch(function(){});
-          }
+          // Scan-Ergebnis NICHT automatisch in Worker schreiben – User soll im Dashboard bestätigen
           res.end(JSON.stringify({ found: true, ip: found }));
         } else {
           res.end(JSON.stringify({ found: false }));
@@ -658,7 +653,7 @@ function printToSocket(ip, port, buf, ms) {
 async function sendToPrinter(buf) {
   // Hauptdrucker – 5 Sekunden Timeout
   try {
-    await printToSocket(CFG.printerIp, CFG.printerPort, buf, 5000);
+    await printToSocket(CFG.printerIp, CFG.printerPort, buf, 8000);
     CFG._useBackup = false;
     return;
   } catch(e) {
@@ -668,7 +663,7 @@ async function sendToPrinter(buf) {
   if (CFG.backupIp) {
     console.log('[DRUCKER] Weiterleitung an Backup: ' + CFG.backupIp + ':' + CFG.backupPort);
     try {
-      await printToSocket(CFG.backupIp, CFG.backupPort, buf, 5000);
+      await printToSocket(CFG.backupIp, CFG.backupPort, buf, 8000);
       CFG._useBackup = true;
       console.log('[DRUCKER] Backup erfolgreich');
       return;
@@ -684,14 +679,8 @@ async function sendToPrinter(buf) {
     const found = await discoverPrinter();
     if (found) {
       CFG.printerIp = found;
-      console.log('[DRUCKER] Neue Drucker-IP gespeichert: ' + found);
-      // Neue IP an Worker melden
-      if (CFG.workerUrl) {
-        fetch(CFG.workerUrl + '/api/config', {
-          method: 'POST', headers: {'Content-Type':'application/json','X-API-Key':CFG.apiKey},
-          body: JSON.stringify({ printerIp: found })
-        }).catch(()=>{});
-      }
+      console.log('[DRUCKER] Neue Drucker-IP gefunden: ' + found + ' (Config bleibt unveraendert)');
+      // IP NICHT in Worker schreiben – Config im Dashboard hat Vorrang!
     } else if (CFG.backupIp) {
       console.log('[DRUCKER] Fallback auf Backup-Drucker: ' + CFG.backupIp);
       CFG._useBackup = true;
