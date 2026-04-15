@@ -223,10 +223,25 @@ window.addEventListener('resize',applyT);
   document.getElementById('mHost').textContent = _savedName || _defaultName;
   // Pi-IP vom Heartbeat laden (alle 30s aktuell)
   function refreshPiIp(){
+    var ipEl  = document.getElementById('mIp');
+    var cfgEl = document.querySelector('.cfg-btn');
     fetch('/api/agent' + (S.station ? '?station=' + S.station : ''))
       .then(r=>r.json())
-      .then(a=>{ document.getElementById('mIp').textContent = (a&&a.ip) ? a.ip : '–.–.–.–'; })
-      .catch(()=>{ document.getElementById('mIp').textContent = '–.–.–.–'; });
+      .then(function(a){
+        if (!a || !a.ip) {
+          ipEl.textContent = 'OFFLINE'; ipEl.classList.add('pi-offline');
+          if(cfgEl) cfgEl.classList.add('pi-offline'); return;
+        }
+        var ageSec = a.updated_at ? Math.round((Date.now() - new Date(a.updated_at).getTime()) / 1000) : 999;
+        if (ageSec > 90) {
+          ipEl.textContent = 'OFFLINE  ' + a.ip; ipEl.classList.add('pi-offline');
+          if(cfgEl) cfgEl.classList.add('pi-offline');
+        } else {
+          ipEl.textContent = a.ip; ipEl.classList.remove('pi-offline');
+          if(cfgEl) cfgEl.classList.remove('pi-offline');
+        }
+      })
+      .catch(function(){ ipEl.textContent = '–.–.–.–'; });
   }
   refreshPiIp();
   setInterval(()=>{
