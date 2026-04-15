@@ -6,7 +6,8 @@ compatibility_flags = ["nodejs_compat"]
 
 # ─── Custom Domain ──────────────────────────────────────────
 routes = [
-  { pattern = "schankmonitor.team24.training", custom_domain = true }
+  { pattern = "schankmonitor.team24.training", custom_domain = true },
+  { pattern = "monitor2.team24.training", custom_domain = true }
 ]
 
 # ─── D1 Datenbank ───────────────────────────────────────────
