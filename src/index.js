@@ -14,7 +14,22 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
 };
 
+async function cleanupOldData(env) {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').substring(0, 19);
+  // Reihenfolge: print_jobs → bon_log → ticket_items → tickets (FK-Abhängigkeiten)
+  const pj = await env.DB.prepare("DELETE FROM print_jobs WHERE created_at < ?").bind(cutoff).run().catch(()=>({meta:{changes:0}}));
+  const bl = await env.DB.prepare("DELETE FROM bon_log WHERE created_at < ?").bind(cutoff).run().catch(()=>({meta:{changes:0}}));
+  const ti = await env.DB.prepare("DELETE FROM ticket_items WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ?)").bind(cutoff).run().catch(()=>({meta:{changes:0}}));
+  const tk = await env.DB.prepare("DELETE FROM tickets WHERE created_at < ?").bind(cutoff).run().catch(()=>({meta:{changes:0}}));
+  console.log(`[CLEANUP] Gelöscht: ${tk.meta.changes} Tickets, ${pj.meta.changes} Jobs, ${ti.meta.changes} Items, ${bl.meta.changes} Bon-Logs`);
+  return { tickets: tk.meta.changes, jobs: pj.meta.changes, items: ti.meta.changes, bonLogs: bl.meta.changes };
+}
+
 export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(cleanupOldData(env));
+  },
+
   async fetch(request, env, ctx) {
     const url    = new URL(request.url);
     const method = request.method;
@@ -358,6 +373,13 @@ async function handleAPI(request, env, url, method) {
       ).all();
       const kellnerList = (kellnerRows.results || []).map(r => r.kellner);
       return jsonResponse({ tickets, kellnerList });
+    }
+
+    // Manueller Cleanup-Trigger (für Tests)
+    if (path === '/admin/cleanup' && method === 'POST') {
+      requireApiKey(request, env);
+      const result = await cleanupOldData(env);
+      return jsonResponse({ ok: true, deleted: result });
     }
 
     return jsonResponse({ error: 'Not found' }, 404);
