@@ -833,6 +833,44 @@ if (CFG.workerUrl && CFG.apiKey) {
   }
   sendHeartbeat(); // Sofort beim Start
   setInterval(sendHeartbeat, 30000); // Dann alle 30s
+
+  // ── WebSocket Push: sofort drucken wenn Worker print_job sendet ──────────
+  (function connectPushWS() {
+    let WS;
+    try { WS = require('ws'); } catch(e) {
+      // ws-Paket fehlt – automatisch installieren
+      try {
+        require('child_process').execSync('npm install ws --save --prefix ' + require('path').dirname(require('fs').realpathSync(__filename)), {stdio:'ignore'});
+        WS = require('ws');
+      } catch(e2) { console.log('[WS] ws-Paket konnte nicht installiert werden:', e2.message); return; }
+    }
+    const wsUrl = (CFG.workerUrl || '').replace('https://', 'wss://') + '/ws?station=' + CFG.stationId;
+    let ws, reconnectTimer;
+    function connect() {
+      ws = new WS(wsUrl);
+      ws.on('open', () => console.log('[WS] Push-Verbindung aktiv'));
+      ws.on('message', (data) => {
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.type === 'print_job') {
+            console.log('[WS] ⚡ print_job push → sofort drucken');
+            pollJobs().catch(() => {});
+          } else if (msg.type === 'ping') {
+            ws.send(JSON.stringify({ type: 'pong' }));
+          }
+        } catch(e) {}
+      });
+      ws.on('close', () => {
+        console.log('[WS] Verbindung getrennt – reconnect in 5s');
+        reconnectTimer = setTimeout(connect, 5000);
+      });
+      ws.on('error', (e) => {
+        console.log('[WS] Fehler:', e.message);
+        ws.terminate();
+      });
+    }
+    connect();
+  })();
   loadRemoteConfig();
   setInterval(loadRemoteConfig, 30000);
 
