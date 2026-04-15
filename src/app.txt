@@ -221,15 +221,14 @@ window.addEventListener('resize',applyT);
   var _defaultName = location.hostname.split('.')[0];
   document.getElementById('mHost').textContent = _savedName || _defaultName;
   // IP vom Pi nachladen
-  fetch('/api/agent' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{
-    if(d&&d.ip) document.getElementById('mIp').textContent=d.ip;
+  fetch('/api/config').then(r=>r.json()).then(d=>{
+    if(d&&d.proxyIp) document.getElementById('mIp').textContent=d.proxyIp;
   }).catch(()=>{});
   setInterval(()=>{
     fetch('/api/config').then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
 
-  fetch('/api/agent' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{
-      if(d&&d.hostname) document.getElementById('mHost').textContent=d.hostname;
-      if(d&&d.ip)       document.getElementById('mIp').textContent=d.ip;
+  fetch('/api/config').then(r=>r.json()).then(d=>{
+      if(d&&d.proxyIp) document.getElementById('mIp').textContent=d.proxyIp;
     }).catch(()=>{});
   }, 30000);
 })();
