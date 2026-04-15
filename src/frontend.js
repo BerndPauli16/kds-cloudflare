@@ -163,6 +163,9 @@ export function getHTML() {
   /* ── Konfig-Button ── */
   .cfg-btn{background:none;border:none;cursor:pointer;color:var(--muted);padding:6px;border-radius:6px;transition:all .2s;display:flex;align-items:center}
   .cfg-btn:hover{background:var(--sur2);color:var(--txt)}
+  .cfg-btn.pi-offline{color:#ef4444!important;animation:pulse-red 1.5s ease-in-out infinite}
+  @keyframes pulse-red{0%,100%{opacity:1}50%{opacity:.4}}
+  .mon-ip.pi-offline{color:#ef4444!important;font-weight:700;letter-spacing:.03em}
   /* ── Modal ── */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
   .modal-overlay.open{opacity:1;pointer-events:all}
