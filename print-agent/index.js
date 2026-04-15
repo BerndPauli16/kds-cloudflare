@@ -644,9 +644,40 @@ async function discoverPrinter() {
   return null;
 }
 
-// ── Drucker senden mit Auto-Fallback ───────────────────────────────────
+// ── TCP an Drucker mit Timeout ─────────────────────────────────────────
+function printToSocket(ip, port, buf, ms) {
+  return new Promise((resolve, reject) => {
+    const sock = new net.Socket();
+    const t = setTimeout(() => { sock.destroy(); reject(new Error('Timeout ' + ms + 'ms')); }, ms);
+    sock.connect(port, ip, () => { sock.write(buf, () => { clearTimeout(t); sock.end(); resolve(); }); });
+    sock.on('error', e => { clearTimeout(t); reject(e); });
+  });
+}
+
+// ── Drucker senden: 5s → Backup → Auto-Discovery ───────────────────────
 async function sendToPrinter(buf) {
-  // Erst konfigurierte IP versuchen
+  // Hauptdrucker – 5 Sekunden Timeout
+  try {
+    await printToSocket(CFG.printerIp, CFG.printerPort, buf, 5000);
+    CFG._useBackup = false;
+    return;
+  } catch(e) {
+    console.log('[DRUCKER] Hauptdrucker ' + CFG.printerIp + ':' + CFG.printerPort + ' Fehler: ' + e.message);
+  }
+  // Backup konfiguriert → weiterleiten
+  if (CFG.backupIp) {
+    console.log('[DRUCKER] Weiterleitung an Backup: ' + CFG.backupIp + ':' + CFG.backupPort);
+    try {
+      await printToSocket(CFG.backupIp, CFG.backupPort, buf, 5000);
+      CFG._useBackup = true;
+      console.log('[DRUCKER] Backup erfolgreich');
+      return;
+    } catch(e2) {
+      throw new Error('Haupt- UND Backup-Drucker nicht erreichbar: ' + e2.message);
+    }
+  }
+  // Kein Backup – Auto-Discovery
+  console.log('[DRUCKER] Kein Backup – Auto-Discovery...');
   const ok = await checkPrinterPort(CFG.printerIp, CFG.printerPort, 2000);
   if (!ok) {
     console.log('[DRUCKER] ' + CFG.printerIp + ':' + CFG.printerPort + ' nicht erreichbar – Auto-Discovery...');
