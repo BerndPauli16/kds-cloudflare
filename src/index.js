@@ -83,7 +83,8 @@ async function handleAPI(request, env, url, method) {
 
     if (path === '/print-jobs/pending' && method === 'GET') {
       requireApiKey(request, env);
-      return jsonResponse(await getPendingJobs(env));
+      const stationFilter = url.searchParams.get('station');
+      return jsonResponse(await getPendingJobs(env, stationFilter));
     }
 
     if (path === '/print-jobs/recent' && method === 'GET') {
@@ -463,8 +464,15 @@ async function getRecentJobs(env) {
   return results.map(j => ({ ...j, payload: JSON.parse(j.payload) }));
 }
 
-async function getPendingJobs(env) {
-  const { results } = await env.DB.prepare("SELECT pj.*, t.table_number FROM print_jobs pj JOIN tickets t ON pj.ticket_id = t.id WHERE pj.status = 'pending' ORDER BY pj.created_at ASC").all();
+async function getPendingJobs(env, stationId) {
+  let query, results;
+  if (stationId) {
+    const r = await env.DB.prepare("SELECT pj.*, t.table_number FROM print_jobs pj JOIN tickets t ON pj.ticket_id = t.id WHERE pj.status = 'pending' AND t.station_id = ? ORDER BY pj.created_at ASC").bind(parseInt(stationId)).all();
+    results = r.results;
+  } else {
+    const r = await env.DB.prepare("SELECT pj.*, t.table_number FROM print_jobs pj JOIN tickets t ON pj.ticket_id = t.id WHERE pj.status = 'pending' ORDER BY pj.created_at ASC").all();
+    results = r.results;
+  }
   return results.map(j => ({ ...j, payload: JSON.parse(j.payload) }));
 }
 
