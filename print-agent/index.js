@@ -843,6 +843,26 @@ if (CFG.workerUrl && CFG.apiKey) {
   })();
   loadRemoteConfig();
   setInterval(loadRemoteConfig, 5000);
+
+  // Self-Update: alle 5 Minuten auf neue Version prüfen
+  const GITHUB_URL = 'https://raw.githubusercontent.com/BerndPauli16/kds-cloudflare/main/print-agent/index.js';
+  const { execSync } = require('child_process');
+  async function checkSelfUpdate() {
+    try {
+      const res = await fetch(GITHUB_URL, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) return;
+      const newCode = await res.text();
+      const currentCode = fs.readFileSync(__filename, 'utf8');
+      if (newCode.length > 1000 && newCode !== currentCode) {
+        console.log('[UPDATE] Neue Version gefunden – Update wird eingespielt...');
+        fs.writeFileSync(__filename, newCode, 'utf8');
+        console.log('[UPDATE] Neustart in 2 Sekunden...');
+        setTimeout(() => { execSync('sudo systemctl restart kds'); }, 2000);
+      }
+    } catch(e) { /* Update-Check fehlgeschlagen, ignorieren */ }
+  }
+  setTimeout(checkSelfUpdate, 30000); // Erster Check nach 30s
+  setInterval(checkSelfUpdate, 300000); // Dann alle 5 Minuten
   console.log('[POLLER] Startet – alle 3s');
   // Smarter Poller mit Backoff bei Netzwerkfehler
   var _pollDelay = 3000;
