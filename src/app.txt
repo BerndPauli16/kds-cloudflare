@@ -1,7 +1,6 @@
 var NL=String.fromCharCode(10);
 
 const S={view:'orders',tickets:[],totals:[],ws:null,prev:{},sel:{}};
-S.station = new URLSearchParams(location.search).get('station') || null;
 let curRot='landscape';
 
 // ─── Drucker-Konfiguration ───────────────────────────────────────────────

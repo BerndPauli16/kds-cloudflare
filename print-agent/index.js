@@ -151,11 +151,10 @@ const httpServer = http.createServer((req, res) => {
 
     // Status-Anfrage (GET oder leerer POST)
     if (req.method === 'GET' || body.length < 20) {
-      // Browser-Request → Redirect zum KDS Monitor mit Station-Filter
+      // Browser-Request → Redirect zum KDS Monitor
       const accept = req.headers['accept'] || '';
       if (req.method === 'GET' && accept.includes('text/html')) {
-        const redirectUrl = `${CFG.workerUrl}?station=${CFG.stationId}`;
-        res.writeHead(302, { 'Location': redirectUrl, 'Connection': 'close' });
+        res.writeHead(302, { 'Location': CFG.workerUrl, 'Connection': 'close' });
         res.end();
         return;
       }
