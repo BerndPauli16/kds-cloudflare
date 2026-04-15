@@ -37,7 +37,7 @@ function openCfg() {
     document.getElementById('piIpDisplay').textContent = '192.168.192.70 (fix)';
   });
 
-  fetch('/api/config').then(r=>r.json()).then(cfg => {
+  fetch('/api/config' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(cfg => {
     document.getElementById('cfgProxyIp').value    = cfg.proxyIp      || '192.168.192.70';
     document.getElementById('cfgProxyPort').value  = cfg.proxyPort    || '8009';
     document.getElementById('cfgPrinterIp').value  = cfg.printerIp    || '192.168.192.202';
@@ -110,6 +110,7 @@ async function saveCfg() {
     printerIp:   document.getElementById('cfgPrinterIp').value.trim(),
     printerPort: parseInt(document.getElementById('cfgPrinterPort').value) || 9100,
     charsPerLine:parseInt(document.getElementById('cfgChars').value) || 42,
+    stationId:   S.station || null,
     backupIp:    document.getElementById('cfgBackupIp').value.trim(),
     backupPort:  parseInt(document.getElementById('cfgBackupPort').value) || 9100,
   };
@@ -214,20 +215,20 @@ window.addEventListener('resize',applyT);
 (()=>{const s=localStorage.getItem('kr')||'landscape';rot(s);})();
 
 (()=>{
-  fetch('/api/config').then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
+  fetch('/api/config' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
 
   // Anzeigename: gespeicherter Name aus localStorage oder URL-Hostname
   var _savedName = localStorage.getItem('kds_display_name');
   var _defaultName = location.hostname.split('.')[0];
   document.getElementById('mHost').textContent = _savedName || _defaultName;
   // IP vom Pi nachladen
-  fetch('/api/config').then(r=>r.json()).then(d=>{
+  fetch('/api/config' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{
     if(d&&d.proxyIp) document.getElementById('mIp').textContent=d.proxyIp;
   }).catch(()=>{});
   setInterval(()=>{
-    fetch('/api/config').then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
+    fetch('/api/config' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
 
-  fetch('/api/config').then(r=>r.json()).then(d=>{
+  fetch('/api/config' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{
       if(d&&d.proxyIp) document.getElementById('mIp').textContent=d.proxyIp;
     }).catch(()=>{});
   }, 30000);

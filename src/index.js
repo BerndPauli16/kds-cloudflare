@@ -126,7 +126,10 @@ async function handleAPI(request, env, url, method) {
 
 
     if (path === '/config' && method === 'GET') {
-      const row = await env.DB.prepare("SELECT value FROM kv_store WHERE key='printer_config'").first().catch(() => null);
+      const stationParam = url.searchParams.get('station');
+      const cfgKey = stationParam ? 'printer_config_' + stationParam : 'printer_config';
+      let row = await env.DB.prepare('SELECT value FROM kv_store WHERE key=?').bind(cfgKey).first().catch(() => null);
+      if (!row && stationParam) row = await env.DB.prepare("SELECT value FROM kv_store WHERE key='printer_config'").first().catch(() => null);
       return jsonResponse(row ? JSON.parse(row.value) : {
         printerIp: '192.168.192.202', printerPort: 9100, charsPerLine: 42,
         proxyIp: '192.168.192.70', proxyPort: 8009
@@ -145,10 +148,12 @@ async function handleAPI(request, env, url, method) {
         backupIp:     body.backupIp     || '',
         backupPort:   body.backupPort   || 9100,
       });
-      await env.DB.prepare("INSERT INTO kv_store (key,value) VALUES ('printer_config',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
-        .bind(val).run().catch(async () => {
-          await env.DB.prepare("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)").run();
-          await env.DB.prepare("INSERT INTO kv_store (key,value) VALUES ('printer_config',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(val).run();
+      const stationPostParam = url.searchParams.get('station') || body.stationId;
+      const cfgKeyPost = stationPostParam ? 'printer_config_' + stationPostParam : 'printer_config';
+      await env.DB.prepare('INSERT INTO kv_store (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value')
+        .bind(cfgKeyPost, val).run().catch(async () => {
+          await env.DB.prepare('CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)').run();
+          await env.DB.prepare('INSERT INTO kv_store (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(cfgKeyPost, val).run();
         });
       return jsonResponse({ ok: true });
     }
