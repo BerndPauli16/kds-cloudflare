@@ -747,7 +747,7 @@ async function logBon(type, parsed) {
 async function pollJobs() {
   if (!CFG.workerUrl) return;
   try {
-    const res  = await fetch(`${CFG.workerUrl}/api/print-jobs/pending`, {
+    const res  = await fetch(`${CFG.workerUrl}/api/print-jobs/pending?station=${CFG.stationId}`, {
       headers: { 'X-API-Key': CFG.apiKey },
     });
     if (!res.ok) return;
