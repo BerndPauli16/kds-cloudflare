@@ -401,6 +401,14 @@ async function createTicket(env, body) {
   const originalItemsJson = JSON.stringify(items || []);
   // station_name Spalte hinzufügen falls nicht vorhanden
   await env.DB.prepare('ALTER TABLE tickets ADD COLUMN kellner TEXT').run().catch(()=>{});
+  // Duplikat-Check: gleiche ticket_number + station_id → existierendes Ticket zurückgeben
+  const existing = await env.DB.prepare(
+    'SELECT id, ticket_number, table_number, station_id FROM tickets WHERE ticket_number = ? AND station_id = ?'
+  ).bind(ticket_number, station_id).first().catch(() => null);
+  if (existing) {
+    console.log('[TICKET] Duplikat ignoriert:', ticket_number, 'station', station_id);
+    return existing;
+  }
   const { meta } = await env.DB.prepare('INSERT INTO tickets (ticket_number, table_number, station_id, original_items, kellner) VALUES (?, ?, ?, ?, ?)').bind(ticket_number, table_number, station_id, originalItemsJson, bonKellner || null).run();
   const ticketId = meta.last_row_id;
   for (const item of (items || [])) {
