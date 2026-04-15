@@ -815,8 +815,8 @@ async function pollJobs() {
 }
 
 if (CFG.workerUrl && CFG.apiKey) {
-  // Eigene IP beim Start an Worker melden
-  (function reportOwnIp() {
+  // Heartbeat: eigene IP alle 30s an Worker melden
+  function sendHeartbeat() {
     const os = require('os');
     const ifaces = os.networkInterfaces();
     for (const name of Object.keys(ifaces)) {
@@ -824,13 +824,15 @@ if (CFG.workerUrl && CFG.apiKey) {
         if (iface.family === 'IPv4' && !iface.internal) {
           fetch(CFG.workerUrl + '/api/agent', {
             method: 'POST', headers: {'Content-Type':'application/json','X-API-Key':CFG.apiKey},
-            body: JSON.stringify({ ip: iface.address, stationId: CFG.stationId })
+            body: JSON.stringify({ ip: iface.address, stationId: CFG.stationId, hostname: require('os').hostname() })
           }).catch(()=>{});
           break;
         }
       }
     }
-  })();
+  }
+  sendHeartbeat(); // Sofort beim Start
+  setInterval(sendHeartbeat, 30000); // Dann alle 30s
   loadRemoteConfig();
   setInterval(loadRemoteConfig, 5000);
 
