@@ -717,18 +717,19 @@ async function loadRemoteConfig() {
   if (!CFG.workerUrl) return;
   try {
     const [cfgRes, stateRes] = await Promise.all([
-      fetch(`${CFG.workerUrl}/api/config`),
+      fetch(`${CFG.workerUrl}/api/config?station=${CFG.stationId}`),
       fetch(`${CFG.workerUrl}/api/bons/state`),
     ]);
     const d = await cfgRes.json();
-    if (d && d.printerIp && d.printerIp !== CFG.printerIp) {
-      console.log(`[CONFIG] Drucker-IP: ${CFG.printerIp} → ${d.printerIp}`);
+    if (d && d.printerIp) {
+      if (d.printerIp !== CFG.printerIp) console.log(`[CONFIG] Drucker-IP: ${CFG.printerIp} → ${d.printerIp}`);
       CFG.printerIp = d.printerIp;
     }
-    if (d && d.printerPort) CFG.printerPort = d.printerPort;
-    if (d && d.charsPerLine) CFG.charsPerLine = d.charsPerLine;
-    if (d && d.backupIp   !== undefined) CFG.backupIp   = d.backupIp   || '';
-    if (d && d.backupPort !== undefined) CFG.backupPort = d.backupPort || 9100;
+    if (d && d.printerPort)              CFG.printerPort = d.printerPort;
+    if (d && d.charsPerLine)             CFG.charsPerLine = d.charsPerLine;
+    if (d && d.backupIp   !== undefined) CFG.backupIp    = d.backupIp   || '';
+    if (d && d.backupPort !== undefined) CFG.backupPort  = d.backupPort || 9100;
+    if (d && d.proxyIp)                  CFG.proxyIp     = d.proxyIp;
     const state = await stateRes.json();
     if (CFG.paused !== state.paused) {
       CFG.paused = state.paused;
