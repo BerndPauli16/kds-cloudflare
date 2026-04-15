@@ -142,6 +142,8 @@ async function handleAPI(request, env, url, method) {
         charsPerLine: body.charsPerLine || 42,
         proxyIp:      body.proxyIp      || '192.168.192.70',
         proxyPort:    body.proxyPort    || 8009,
+        backupIp:     body.backupIp     || '',
+        backupPort:   body.backupPort   || 9100,
       });
       await env.DB.prepare("INSERT INTO kv_store (key,value) VALUES ('printer_config',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
         .bind(val).run().catch(async () => {
