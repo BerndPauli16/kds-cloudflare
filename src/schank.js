@@ -69,7 +69,7 @@ export function getSchankHTML() {
       </svg>
     </div>
     <div class="host-info">
-      <span class="host-name" id="hostName">schankmonitor</span>
+      <span class="host-name" id="hostName">monitor1</span>
       <span class="host-ip" id="hostIp">192.168.192.70</span>
     </div>
     <div class="div"></div>

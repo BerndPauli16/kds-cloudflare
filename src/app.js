@@ -168,7 +168,7 @@ window.addEventListener('resize',applyT);
   fetch('/api/agent').then(r=>r.json()).then(d=>{
     if(d&&d.hostname) document.getElementById('mHost').textContent=d.hostname;
     if(d&&d.ip)       document.getElementById('mIp').textContent=d.ip;
-  }).catch(()=>{ document.getElementById('mHost').textContent='schankmonitor'; });
+  }).catch(()=>{ document.getElementById('mHost').textContent='monitor1'; });
   setInterval(()=>{
     fetch('/api/config').then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
 

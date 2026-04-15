@@ -1,7 +1,7 @@
 var NL=String.fromCharCode(10);
 
 const S={view:'orders',tickets:[],totals:[],ws:null,prev:{},sel:{}};
-(function(){var h=location.hostname.split('.')[0];if(h==='monitor2')S.station='2';else if(h==='schankmonitor')S.station='1';})();
+(function(){var h=location.hostname.split('.')[0];if(h==='monitor2')S.station='2';else if(h==='monitor1')S.station='1';})();
 let curRot='landscape';
 
 // ─── Drucker-Konfiguration ───────────────────────────────────────────────
