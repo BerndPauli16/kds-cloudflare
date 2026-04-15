@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "build":   "20260412-001",
-  "date":    "2026-04-12",
-  "notes":   "Initiales Release – Tickets, Druck-Jobs, WebSocket-Echtzeit, Print-Agent"
+  "version": "1.2.0",
+  "build": "20260415-001",
+  "date": "2026-04-15",
+  "notes": "Stabilitaet, Performance, Offline-Anzeige, DB-Cleanup"
 }
