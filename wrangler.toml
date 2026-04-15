@@ -34,3 +34,7 @@ globs = ["**/*.txt"]
 [[migrations]]
 tag = "v1"
 new_classes = ["KDSRoom"]
+
+# ─── Cron: DB-Cleanup täglich um 03:00 UTC ──────────────────
+[triggers]
+crons = ["0 3 * * *"]
