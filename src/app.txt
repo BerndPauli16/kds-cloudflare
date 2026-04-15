@@ -221,16 +221,17 @@ window.addEventListener('resize',applyT);
   var _savedName = localStorage.getItem('kds_display_name');
   var _defaultName = location.hostname.split('.')[0];
   document.getElementById('mHost').textContent = _savedName || _defaultName;
-  // IP vom Pi nachladen
-  fetch('/api/config' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{
-    if(d&&d.proxyIp) document.getElementById('mIp').textContent=d.proxyIp;
-  }).catch(()=>{});
+  // Pi-IP vom Heartbeat laden (alle 30s aktuell)
+  function refreshPiIp(){
+    fetch('/api/agent' + (S.station ? '?station=' + S.station : ''))
+      .then(r=>r.json())
+      .then(a=>{ document.getElementById('mIp').textContent = (a&&a.ip) ? a.ip : '–.–.–.–'; })
+      .catch(()=>{ document.getElementById('mIp').textContent = '–.–.–.–'; });
+  }
+  refreshPiIp();
   setInterval(()=>{
     fetch('/api/config' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
-
-  fetch('/api/config' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{
-      if(d&&d.proxyIp) document.getElementById('mIp').textContent=d.proxyIp;
-    }).catch(()=>{});
+    refreshPiIp();
   }, 30000);
 })();
 
