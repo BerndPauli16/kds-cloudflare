@@ -877,13 +877,32 @@ if (CFG.workerUrl && CFG.apiKey) {
   // Self-Update: alle 5 Minuten auf neue Version prüfen
   const GITHUB_URL = 'https://raw.githubusercontent.com/BerndPauli16/kds-cloudflare/main/print-agent/index.js';
   const { execSync } = require('child_process');
+  const PKG_URL = 'https://raw.githubusercontent.com/BerndPauli16/kds-cloudflare/main/print-agent/package.json';
   async function checkSelfUpdate() {
     try {
-      const res = await fetch(GITHUB_URL, { signal: AbortSignal.timeout(10000) });
-      if (!res.ok) return;
-      const newCode = await res.text();
+      const [codeRes, pkgRes] = await Promise.all([
+        fetch(GITHUB_URL, { signal: AbortSignal.timeout(10000) }),
+        fetch(PKG_URL,    { signal: AbortSignal.timeout(10000) }),
+      ]);
+      if (!codeRes.ok) return;
+      const newCode = await codeRes.text();
       const currentCode = fs.readFileSync(__filename, 'utf8');
-      if (newCode.length > 1000 && newCode !== currentCode) {
+      const codeChanged = newCode.length > 1000 && newCode !== currentCode;
+
+      // package.json updaten + npm install wenn sich Dependencies geändert haben
+      if (pkgRes.ok) {
+        const newPkg = await pkgRes.text();
+        const pkgPath = require('path').join(require('path').dirname(__filename), 'package.json');
+        const currentPkg = fs.readFileSync(pkgPath, 'utf8').trim();
+        if (newPkg.trim() !== currentPkg) {
+          console.log('[UPDATE] package.json aktualisiert – npm install...');
+          fs.writeFileSync(pkgPath, newPkg, 'utf8');
+          execSync('npm install --production --silent', { cwd: require('path').dirname(__filename), stdio: 'ignore' });
+          console.log('[UPDATE] npm install abgeschlossen');
+        }
+      }
+
+      if (codeChanged) {
         console.log('[UPDATE] Neue Version gefunden – Update wird eingespielt...');
         fs.writeFileSync(__filename, newCode, 'utf8');
         console.log('[UPDATE] Neustart in 2 Sekunden...');
