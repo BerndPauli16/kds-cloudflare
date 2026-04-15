@@ -425,10 +425,7 @@ export function getHTML() {
       </div>
       <div class="cfg-section">
         <div class="cfg-sec-title">📥 Eingehender Drucker (Raspberry Pi)</div>
-        <div class="cfg-field" style="margin-bottom:10px">
-          <label class="cfg-lbl">Pi IP-Adresse <span style="color:var(--amber);font-size:9px;letter-spacing:.04em">(fix im Router vergeben)</span></label>
-          <div class="cfg-preview pi-ip-display" id="piIpDisplay" style="cursor:default;font-size:13px;color:var(--txt)">wird geladen…</div>
-        </div>
+
         <div class="cfg-field">
           <label class="cfg-lbl">asello Drucker-Einstellung</label>
           <div class="cfg-preview" id="proxyPreview" style="color:var(--muted)">—</div>
