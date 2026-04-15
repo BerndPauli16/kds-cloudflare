@@ -452,8 +452,16 @@ export function getHTML() {
             </table>
           </div>
         </div>
-        <input type="hidden" id="cfgProxyIp" value="192.168.192.70">
-        <input type="hidden" id="cfgProxyPort" value="8009">
+        <div class="cfg-grid" style="margin-bottom:10px">
+          <div class="cfg-field">
+            <label class="cfg-lbl">Pi IP-Adresse <span style="font-size:10px;color:var(--muted)">(Raspberry Pi im Netzwerk)</span></label>
+            <input class="cfg-inp" id="cfgProxyIp" placeholder="192.168.192.70">
+          </div>
+          <div class="cfg-field">
+            <label class="cfg-lbl">Pi Port</label>
+            <input class="cfg-inp" id="cfgProxyPort" placeholder="8009" type="number">
+          </div>
+        </div>
       </div>
 
       <div class="cfg-section">
@@ -485,6 +493,19 @@ export function getHTML() {
         <div class="cfg-preview" id="cplPreview" style="font-size:10px">1234567890</div>
       </div>
 
+      <div class="cfg-section" style="margin-top:12px">
+        <div class="cfg-sec-title">🔄 Backup-Drucker (Fallback)</div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <label class="cfg-lbl">Backup IP-Adresse</label>
+            <input class="cfg-inp" id="cfgBackupIp" placeholder="leer = kein Backup">
+          </div>
+          <div class="cfg-field">
+            <label class="cfg-lbl">Backup Port</label>
+            <input class="cfg-inp" id="cfgBackupPort" placeholder="9100" type="number">
+          </div>
+        </div>
+      </div>
       <div class="cfg-footer">
         <button class="btn-save" onclick="saveCfg()">✓ Speichern</button>
         <button class="btn-cancel" onclick="closeCfg()">Abbrechen</button>

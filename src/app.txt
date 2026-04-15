@@ -43,6 +43,8 @@ function openCfg() {
     document.getElementById('cfgPrinterIp').value  = cfg.printerIp    || '192.168.192.202';
     document.getElementById('cfgPrinterPort').value= cfg.printerPort  || '9100';
     document.getElementById('cfgChars').value      = cfg.charsPerLine || '42';
+    document.getElementById('cfgBackupIp').value   = cfg.backupIp     || '';
+    document.getElementById('cfgBackupPort').value = cfg.backupPort   || '9100';
     updateProxyPreview(); updateCplPreview();
     document.getElementById('cfgModal').classList.add('open');
   }).catch(() => {
@@ -108,6 +110,8 @@ async function saveCfg() {
     printerIp:   document.getElementById('cfgPrinterIp').value.trim(),
     printerPort: parseInt(document.getElementById('cfgPrinterPort').value) || 9100,
     charsPerLine:parseInt(document.getElementById('cfgChars').value) || 42,
+    backupIp:    document.getElementById('cfgBackupIp').value.trim(),
+    backupPort:  parseInt(document.getElementById('cfgBackupPort').value) || 9100,
   };
   try {
     const res = await fetch('/api/config', {

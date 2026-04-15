@@ -18,6 +18,8 @@ const CFG = {
   stationId:    parseInt(process.env.KDS_STATION_ID) || 1,
   charsPerLine: 42,
   paused: false,
+  backupIp:     process.env.BACKUP_PRINTER_IP   || '',
+  backupPort:   parseInt(process.env.BACKUP_PRINTER_PORT) || 9100,
 };
 
 let jobCounter = 0;
@@ -659,14 +661,20 @@ async function sendToPrinter(buf) {
           body: JSON.stringify({ printerIp: found })
         }).catch(()=>{});
       }
+    } else if (CFG.backupIp) {
+      console.log('[DRUCKER] Fallback auf Backup-Drucker: ' + CFG.backupIp);
+      CFG._useBackup = true;
     } else {
       throw new Error('Drucker nicht gefunden im Netzwerk');
     }
   }
+  const targetIp   = CFG._useBackup ? CFG.backupIp   : CFG.printerIp;
+  const targetPort = CFG._useBackup ? CFG.backupPort : CFG.printerPort;
+  if (CFG._useBackup) console.log('[DRUCKER] Druckt auf Backup: ' + targetIp + ':' + targetPort);
   return new Promise((resolve, reject) => {
     const sock = new net.Socket();
     const timer = setTimeout(() => { sock.destroy(); reject(new Error('Drucker Timeout')); }, 6000);
-    sock.connect(CFG.printerPort, CFG.printerIp, () => {
+    sock.connect(targetPort, targetIp, () => {
       sock.write(buf, () => { clearTimeout(timer); sock.end(); resolve(); });
     });
     sock.on('error', e => { clearTimeout(timer); reject(e); });
@@ -688,6 +696,8 @@ async function loadRemoteConfig() {
     }
     if (d && d.printerPort) CFG.printerPort = d.printerPort;
     if (d && d.charsPerLine) CFG.charsPerLine = d.charsPerLine;
+    if (d && d.backupIp   !== undefined) CFG.backupIp   = d.backupIp   || '';
+    if (d && d.backupPort !== undefined) CFG.backupPort = d.backupPort || 9100;
     const state = await stateRes.json();
     if (CFG.paused !== state.paused) {
       CFG.paused = state.paused;
