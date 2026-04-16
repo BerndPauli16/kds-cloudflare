@@ -64,9 +64,9 @@ cd print-agent
 sudo -u pi npm install --production --silent
 
 cat > /home/pi/kds-cloudflare/print-agent/.env <<'ENV'
-PRINTER_IP=192.168.192.202
+PRINTER_IP=192.168.192.203
 PRINTER_PORT=9100
-PROXY_PORT=9100
+PROXY_PORT=8009
 HTTP_PORT=80
 KDS_WORKER_URL=https://kds.team24.training
 KDS_API_KEY=kds-smarte-events-2026
