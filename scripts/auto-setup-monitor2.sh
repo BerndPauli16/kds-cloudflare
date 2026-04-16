@@ -53,17 +53,17 @@ fi
 info "cloudflared: $(cloudflared --version | head -1)"
 
 log "[4/7] KDS-Agent klonen..."
-cd /home/pi
+cd /home/monitor2
 if [ -d "kds-cloudflare" ]; then
-  cd kds-cloudflare && sudo -u pi git pull
+  cd kds-cloudflare && sudo -u monitor2 git pull
 else
-  sudo -u pi git clone -q https://github.com/BerndPauli16/kds-cloudflare.git
+  sudo -u monitor2 git clone -q https://github.com/BerndPauli16/kds-cloudflare.git
   cd kds-cloudflare
 fi
 cd print-agent
-sudo -u pi npm install --production --silent
+sudo -u monitor2 npm install --production --silent
 
-cat > /home/pi/kds-cloudflare/print-agent/.env <<'ENV'
+cat > /home/monitor2/kds-cloudflare/print-agent/.env <<'ENV'
 PRINTER_IP=192.168.192.203
 PRINTER_PORT=9100
 PROXY_PORT=8009
@@ -73,7 +73,7 @@ KDS_API_KEY=kds-smarte-events-2026
 KDS_STATION=Küche
 KDS_STATION_ID=2
 ENV
-chown pi:pi /home/pi/kds-cloudflare/print-agent/.env
+chown monitor2:monitor2 /home/monitor2/kds-cloudflare/print-agent/.env
 
 # KDS-Agent Service
 cat > /etc/systemd/system/kds-agent.service <<'SVC'
@@ -84,12 +84,12 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/kds-cloudflare/print-agent
+User=monitor2
+WorkingDirectory=/home/monitor2/kds-cloudflare/print-agent
 ExecStart=/usr/bin/node index.js
 Restart=on-failure
 RestartSec=10
-EnvironmentFile=/home/pi/kds-cloudflare/print-agent/.env
+EnvironmentFile=/home/monitor2/kds-cloudflare/print-agent/.env
 
 [Install]
 WantedBy=multi-user.target
@@ -98,14 +98,14 @@ SVC
 # Self-Update Script
 cat > /usr/local/bin/kds-update.sh <<'UPDATE'
 #!/bin/bash
-cd /home/pi/kds-cloudflare || exit 1
-BEFORE=$(sudo -u pi git rev-parse HEAD)
-sudo -u pi git fetch origin main >/dev/null 2>&1
-sudo -u pi git reset --hard origin/main >/dev/null 2>&1
-AFTER=$(sudo -u pi git rev-parse HEAD)
+cd /home/monitor2/kds-cloudflare || exit 1
+BEFORE=$(sudo -u monitor2 git rev-parse HEAD)
+sudo -u monitor2 git fetch origin main >/dev/null 2>&1
+sudo -u monitor2 git reset --hard origin/main >/dev/null 2>&1
+AFTER=$(sudo -u monitor2 git rev-parse HEAD)
 if [ "$BEFORE" != "$AFTER" ]; then
   cd print-agent
-  sudo -u pi npm install --production >/dev/null 2>&1
+  sudo -u monitor2 npm install --production >/dev/null 2>&1
   systemctl restart kds-agent
   logger "KDS Update: $BEFORE -> $AFTER"
 fi
@@ -131,12 +131,12 @@ read -p "Drücke ENTER um fortzufahren..."
 echo ""
 
 # Login als pi user (wichtig!)
-sudo -u pi cloudflared tunnel login
+sudo -u monitor2 cloudflared tunnel login
 
 # Prüfen ob Login erfolgreich
-if [ ! -f /home/pi/.cloudflared/cert.pem ]; then
+if [ ! -f /home/monitor2/.cloudflared/cert.pem ]; then
   err "Cloudflare-Login nicht erfolgreich. Abbruch."
-  err "Die Datei /home/pi/.cloudflared/cert.pem fehlt."
+  err "Die Datei /home/monitor2/.cloudflared/cert.pem fehlt."
   exit 1
 fi
 log "Cloudflare-Login erfolgreich!"
@@ -144,11 +144,11 @@ echo ""
 
 # Alten Tunnel löschen (falls vorhanden)
 log "Alten Tunnel aufräumen..."
-sudo -u pi cloudflared tunnel delete -f kds-monitor2-tunnel 2>/dev/null || true
+sudo -u monitor2 cloudflared tunnel delete -f kds-monitor2-tunnel 2>/dev/null || true
 
 # Neuen Tunnel erstellen
 log "Neuen Tunnel 'kds-monitor2-tunnel' erstellen..."
-CREATE_OUT=$(sudo -u pi cloudflared tunnel create kds-monitor2-tunnel 2>&1)
+CREATE_OUT=$(sudo -u monitor2 cloudflared tunnel create kds-monitor2-tunnel 2>&1)
 echo "$CREATE_OUT"
 
 # Tunnel-ID extrahieren
@@ -167,7 +167,7 @@ log "Tunnel-Config erstellen..."
 mkdir -p /etc/cloudflared
 cat > /etc/cloudflared/config.yml <<CFG
 tunnel: ${TUNNEL_ID}
-credentials-file: /home/pi/.cloudflared/${TUNNEL_ID}.json
+credentials-file: /home/monitor2/.cloudflared/${TUNNEL_ID}.json
 
 ingress:
   - hostname: monitor2.team24.training
@@ -177,7 +177,7 @@ CFG
 
 # DNS-Route setzen
 log "DNS-Route für monitor2.team24.training setzen..."
-sudo -u pi cloudflared tunnel route dns -f kds-monitor2-tunnel monitor2.team24.training
+sudo -u monitor2 cloudflared tunnel route dns -f kds-monitor2-tunnel monitor2.team24.training
 
 # Service installieren
 log "Tunnel-Service installieren..."
@@ -216,7 +216,7 @@ echo "URL:         https://monitor2.team24.training"
 echo "KDS-Monitor: https://kds.team24.training/station/2"
 echo ""
 echo "Nächster Schritt (optional):"
-echo "  Kiosk-Modus installieren → sudo bash /home/pi/kds-cloudflare/scripts/setup-kiosk.sh"
+echo "  Kiosk-Modus installieren → sudo bash /home/monitor2/kds-cloudflare/scripts/setup-kiosk.sh"
 echo ""
 echo "Logs:"
 echo "  sudo journalctl -u cloudflared -f"
