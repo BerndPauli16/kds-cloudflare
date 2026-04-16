@@ -864,7 +864,7 @@ if (CFG.workerUrl && CFG.apiKey) {
     const wsUrl = (CFG.workerUrl || '').replace('https://', 'wss://') + '/ws?station=' + CFG.stationId;
     let ws, reconnectTimer;
     function connect() {
-      ws = new WS(wsUrl);
+      ws = new WS(wsUrl, { headers: { 'Host': 'kds.team24.training' } });
       ws.on('open', () => console.log('[WS] Push-Verbindung aktiv'));
       ws.on('message', (data) => {
         try {
