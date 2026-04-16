@@ -1,30 +1,32 @@
 #!/bin/bash
-set -e
-echo "=== Fix: PROXY_PORT auf 80 setzen ==="
+echo "=== DNS Test ==="
+cat /etc/resolv.conf
+echo ""
+nslookup kds.team24.training 2>&1 || true
+echo ""
+ping -c 2 8.8.8.8 2>&1 | head -5
+echo ""
+ping -c 2 kds.team24.training 2>&1 | head -5
 
-# .env korrigieren - PROXY_PORT muss 80 sein (Tunnel zeigt auf :80)
-cat > /home/monitor2/kds-cloudflare/print-agent/.env <<'ENV'
-PRINTER_IP=192.168.192.225
-PRINTER_PORT=9100
-PROXY_PORT=80
-KDS_WORKER_URL=https://kds.team24.training
-KDS_API_KEY=kds-smarte-events-2026
-KDS_STATION=Küche
-KDS_STATION_ID=2
-ENV
+echo ""
+echo "=== DNS Fix: Google DNS setzen ==="
+# Temporär
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 
-chown monitor2:monitor2 /home/monitor2/kds-cloudflare/print-agent/.env
-echo "Neue .env:"
-cat /home/monitor2/kds-cloudflare/print-agent/.env
+echo ""
+echo "=== DNS Test nach Fix ==="
+nslookup kds.team24.training 2>&1 | head -5
+
+echo ""
+echo "=== Permanent fix via dhcpcd ==="
+if [ -f /etc/dhcpcd.conf ]; then
+  grep -q "static domain_name_servers" /etc/dhcpcd.conf || echo "static domain_name_servers=8.8.8.8 1.1.1.1" >> /etc/dhcpcd.conf
+  echo "dhcpcd.conf aktualisiert"
+fi
 
 echo ""
 echo "=== Agent neu starten ==="
 systemctl restart kds-agent
-sleep 3
-systemctl status kds-agent --no-pager | head -5
-
-echo ""
-echo "=== HTTP Test Port 80 ==="
-curl -s http://localhost:80/ | head -3 && echo "PORT 80 OK!" || echo "Port 80 noch nicht da"
-sleep 2
-curl -s http://localhost:80/api/agent | head -3 || echo "API noch nicht bereit"
+sleep 5
+journalctl -u kds-agent -n 10 --no-pager | grep -v "retry|wieder"
