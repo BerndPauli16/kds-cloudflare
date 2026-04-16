@@ -9,14 +9,14 @@ require('dotenv').config();
 const net  = require('net');
 const http = require('http');
 
-// DNS-Override: kds.team24.training direkt auf Cloudflare IP mappen
-// Umgeht DNS-Auflösungsprobleme im lokalen Netz
+// DNS-Override: kds.team24.training direkt auf Cloudflare Worker IP mappen
+// Umgeht DNS-Auflösungsprobleme im lokalen Netz (Worker hat kein A-Record)
 const dns = require('dns');
 const originalLookup = dns.lookup.bind(dns);
 dns.lookup = (hostname, options, callback) => {
   if (hostname === 'kds.team24.training') {
     const cb = typeof options === 'function' ? options : callback;
-    return cb(null, '104.21.42.248', 4);
+    return cb(null, '172.67.214.18', 4);
   }
   return originalLookup(hostname, options, callback);
 };
