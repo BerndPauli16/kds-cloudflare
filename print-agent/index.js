@@ -555,7 +555,7 @@ function buildTicketBuffer(p) {
   parts.push(escBuf(ESC, 0x45, 0x00));     // Bold OFF
   parts.push(escBuf(GS,  0x21, 0x00));     // Normal
   txt(`Bon:   #${p.ticket_number}`);
-  const orderTime = new Date(p.created_at || Date.now());
+  const orderTime = p.created_at ? new Date(p.created_at.replace(' ','T')+'Z') : new Date();
   const printTime = new Date();
   const bonierZeit = orderTime.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   txt(`BONIERT: ${bonierZeit}`);
@@ -604,8 +604,9 @@ function buildTicketBuffer(p) {
   // ── Fußzeile ─────────────────────────────────
   line();
   parts.push(escBuf(ESC, 0x61, 0x00));     // Links
-  const durationMin = Math.round((printTime - orderTime) / 60000);
-  txt(`DAUER: ${durationMin} min`);
+  const durationSec = Math.round((printTime - orderTime) / 1000);
+  const durationFmt = Math.floor(durationSec/60) + ':' + String(durationSec%60).padStart(2,'0');
+  txt(`DAUER: ${durationFmt} min`);
   txt(`BIS GEDRUCKT UM: ${printTime.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`);
   br(); br(); br();
   parts.push(escBuf(GS, 0x56, 0x42, 0x00)); // Vollschnitt
@@ -953,3 +954,4 @@ if (CFG.workerUrl && CFG.apiKey) {
 } else {
   console.log('[POLLER] Kein Worker-URL/API-Key – Poller deaktiviert');
 }
+
