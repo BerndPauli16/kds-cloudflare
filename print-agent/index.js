@@ -551,7 +551,7 @@ function buildTicketBuffer(p) {
   parts.push(escBuf(ESC, 0x61, 0x00));     // Links
   parts.push(escBuf(GS,  0x21, 0x22));     // 3x Breite + 3x Höhe
   parts.push(escBuf(ESC, 0x45, 0x01));     // Bold ON
-  txt(`Tisch ${p.table_number || '–'}`);
+  txt(`${p.table_number || '–'}`);
   parts.push(escBuf(ESC, 0x45, 0x00));     // Bold OFF
   parts.push(escBuf(GS,  0x21, 0x00));     // Normal
   txt(`Bon:   #${p.ticket_number}`);
