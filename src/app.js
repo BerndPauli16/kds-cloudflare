@@ -518,11 +518,14 @@ function sv(v){
   document.getElementById('tO').classList.toggle('active',v==='orders');
   document.getElementById('tP').classList.toggle('active',v==='products');
   document.getElementById('tV').classList.toggle('active',v==='virtual');
+  document.getElementById('tD') && document.getElementById('tD').classList.toggle('active',v==='diagram');
   document.getElementById('tH') && document.getElementById('tH').classList.toggle('active',v==='history');
   var hv=document.getElementById('histView');
   if(hv) hv.classList.toggle('active',v==='history');
+  var dv=document.getElementById('diagView');
+  if(dv){dv.classList.toggle('active',v==='diagram');if(v==='diagram'){dgLoad();dgLoadKellner();}}
   document.getElementById('main').classList.toggle('products-view',v==='products');
-  document.getElementById('main').style.display = (v==='virtual'||v==='history') ? 'none' : '';
+  document.getElementById('main').style.display = (v==='virtual'||v==='history'||v==='diagram') ? 'none' : '';
   if(v==='history') histLoad();
   const vpView=document.getElementById('vp-view');
   if(vpView){vpView.classList.toggle('active',v==='virtual');if(v==='virtual'){vpLoad();vpStartTimer();vpcLoad();}else if(VP.timer){clearInterval(VP.timer);VP.timer=null;}}
@@ -902,6 +905,132 @@ function histRenderKellner(list) {
     btn.textContent = k;
     btn.onclick = function() { HIST.kellner = k; HIST.tisch = null; histLoad(); };
     tb.appendChild(btn);
+  });
+}
+
+// ─── Diagramm-View ───────────────────────────────────────────────────────────
+var DG = { days: 1, kellner: null };
+
+async function dgDays(d) {
+  DG.days = d;
+  ['dg1','dg7','dg30'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.classList.toggle('active',(id==='dg1'&&d===1)||(id==='dg7'&&d===7)||(id==='dg30'&&d===30));
+  });
+  await dgLoad();
+}
+
+async function dgLoadKellner() {
+  try {
+    var r = await fetch('/api/stats/kellner?days=30');
+    var list = await r.json();
+    var wrap = document.getElementById('diagKlWrap');
+    if (!wrap) return;
+    var html = '<button class="diag-kl-btn'+(DG.kellner===null?' active':'')+'" onclick="dgKellner(null)">Alle</button>';
+    list.forEach(function(k){
+      html += '<button class="diag-kl-btn'+(DG.kellner===k?' active':'')+'" onclick="dgKellner(''+k+'')">'+k+'</button>';
+    });
+    wrap.innerHTML = html;
+  } catch(e) {}
+}
+
+function dgKellner(k) {
+  DG.kellner = k;
+  document.querySelectorAll('.diag-kl-btn').forEach(function(b){
+    b.classList.toggle('active', b.textContent === (k||'Alle'));
+  });
+  dgLoad();
+}
+
+async function dgLoad() {
+  try {
+    var url = '/api/stats/items-by-hour?days='+DG.days+(DG.kellner?'&kellner='+encodeURIComponent(DG.kellner):'');
+    var r = await fetch(url);
+    var data = await r.json();
+    dgRender(data);
+  } catch(e) {}
+}
+
+function dgRender(data) {
+  var svg = document.getElementById('diagSvg');
+  var tip = document.getElementById('diagTip');
+  if (!svg || !data || !data.length) return;
+  var W=480, H=160, pad={l:32,r:8,t:10,b:24};
+  var chartW=W-pad.l-pad.r, chartH=H-pad.t-pad.b;
+  var maxItems = Math.max.apply(null, data.map(function(d){return d.items||0}));
+  var maxVal = Math.max(maxItems, 1);
+  var barW = chartW / 24;
+  var nowH = new Date().getHours();
+  var cs = getComputedStyle(document.documentElement);
+  var amber = cs.getPropertyValue('--amber').trim()||'#f59e0b';
+  var green = cs.getPropertyValue('--green').trim()||'#10b981';
+  var blue  = cs.getPropertyValue('--blue').trim()||'#3b82f6';
+  var brd   = cs.getPropertyValue('--brd').trim()||'#2a2a2f';
+  var muted = cs.getPropertyValue('--muted').trim()||'#888';
+  var html = '';
+  // Grid-Linien
+  [0.25, 0.5, 0.75, 1].forEach(function(f){
+    var y = pad.t + chartH - f*chartH;
+    html += '<line x1="'+pad.l+'" y1="'+y+'" x2="'+(W-pad.r)+'" y2="'+y+'" stroke="'+brd+'" stroke-width="0.5" opacity="0.5"/>';
+    var label = Math.round(f*maxVal);
+    html += '<text x="'+(pad.l-3)+'" y="'+(y+3)+'" text-anchor="end" font-size="9" fill="'+muted+'">'+label+'</text>';
+  });
+  // Balken: Artikel (primär) + Tickets als dünner Overlay
+  var totalTickets=0, totalItems=0, peakHour=null, peakVal=0;
+  data.forEach(function(d,i){
+    var items = d.items || 0;
+    var tickets = d.tickets || 0;
+    totalTickets += tickets;
+    totalItems += items;
+    if (items > peakVal) { peakVal = items; peakHour = d.hour; }
+    var x = pad.l + i * barW;
+    var isCurrent = (DG.days===1 && i===nowH);
+    var color = isCurrent ? amber : (items > maxVal*0.7 ? green : blue);
+    if (items > 0) {
+      var bh = (items / maxVal) * chartH;
+      var y = pad.t + chartH - bh;
+      html += '<rect class="diag-bar" x="'+(x+1.5)+'" y="'+y+'" width="'+(barW-3)+'" height="'+bh+'" fill="'+color+'" rx="2" opacity="0.85"'+
+        ' data-h="'+d.hour+'" data-items="'+items+'" data-tickets="'+tickets+'"/>';
+    } else {
+      html += '<rect x="'+(x+1.5)+'" y="'+(pad.t+chartH-1)+'" width="'+(barW-3)+'" height="1" fill="'+brd+'"/>';
+    }
+    // Stunden-Label
+    if (i % 3 === 0) {
+      html += '<text x="'+(x+barW/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="9" fill="'+muted+'">'+d.hour+'</text>';
+    }
+  });
+  // Aktuelle-Stunde Linie
+  if (DG.days === 1) {
+    var nowX = pad.l + nowH * barW + barW/2;
+    html += '<line class="diag-now-line" x1="'+nowX+'" y1="'+pad.t+'" x2="'+nowX+'" y2="'+(pad.t+chartH)+'"/>';
+  }
+  svg.innerHTML = html;
+  // Summary
+  var elT = document.getElementById('dgStatTickets');
+  var elI = document.getElementById('dgStatItems');
+  var elP = document.getElementById('dgStatPeak');
+  if (elT) elT.textContent = totalTickets;
+  if (elI) elI.textContent = totalItems;
+  if (elP) elP.textContent = peakHour !== null ? peakHour+':00' : '–';
+  // Tooltip
+  svg.querySelectorAll('.diag-bar').forEach(function(rect){
+    rect.addEventListener('mouseenter', function(){
+      var h = rect.getAttribute('data-h');
+      var items = rect.getAttribute('data-items');
+      var tickets = rect.getAttribute('data-tickets');
+      tip.innerHTML = '<b>'+h+':00 Uhr</b><br>'+items+' Artikel<br>'+tickets+' Bons';
+      tip.style.display = 'block';
+    });
+    rect.addEventListener('mousemove', function(e){
+      var wrap = svg.closest('.diag-chart-wrap');
+      var br = wrap.getBoundingClientRect();
+      var tx = e.clientX - br.left + 12;
+      var ty = e.clientY - br.top - 50;
+      if (tx + 130 > br.width) tx = e.clientX - br.left - 140;
+      tip.style.left = tx + 'px';
+      tip.style.top = Math.max(0, ty) + 'px';
+    });
+    rect.addEventListener('mouseleave', function(){ tip.style.display = 'none'; });
   });
 }
 
