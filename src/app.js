@@ -433,6 +433,86 @@ function vpUpdatePlayBtn(){const btn=document.getElementById('vpPlay');const ico
 async function vpDelete(id){await fetch('/api/bons/'+id,{method:'DELETE',headers:{'X-API-Key':API_KEY}});vpLoad();}
 function vpStartTimer(){if(VP.timer)clearInterval(VP.timer);VP.timer=setInterval(vpLoad,5000);}
 
+// ─── Bons-je-Stunde Chart ────────────────────────────────────────────────
+let VPC={days:1};
+function vpcDays(d){
+  VPC.days=d;
+  ['vpc1','vpc7','vpc30'].forEach(id=>{
+    var el=document.getElementById(id);
+    if(el) el.classList.toggle('active', (id==='vpc1'&&d===1)||(id==='vpc7'&&d===7)||(id==='vpc30'&&d===30));
+  });
+  vpcLoad();
+}
+async function vpcLoad(){
+  var chart=document.getElementById('vpChart');
+  if(!chart) return;
+  try{
+    var res=await fetch('/api/stats/bons-by-hour?days='+VPC.days);
+    if(!res.ok) return;
+    var data=await res.json();
+    vpcRender(data);
+  }catch(e){}
+}
+function vpcRender(data){
+  var svg=document.getElementById('vpcSvg');
+  var tip=document.getElementById('vpcTip');
+  if(!svg||!data||!data.length) return;
+  var W=480, H=120, pad={l:28,r:8,t:8,b:22};
+  var chartW=W-pad.l-pad.r, chartH=H-pad.t-pad.b;
+  var max=Math.max(...data.map(d=>d.count),1);
+  var barW=chartW/24;
+  var nowH=new Date().getHours();
+  var cs=getComputedStyle(document.documentElement);
+  var amber=cs.getPropertyValue('--amber').trim()||'#f59e0b';
+  var blue=cs.getPropertyValue('--blue').trim()||'#3b82f6';
+  var brd=cs.getPropertyValue('--brd').trim()||'#2a2a2f';
+  var muted=cs.getPropertyValue('--muted').trim()||'#888';
+  var sur2=cs.getPropertyValue('--sur2').trim()||'#1f1f22';
+  var html='';
+  // Grid-Linie oben
+  html+='<line x1="'+pad.l+'" y1="'+pad.t+'" x2="'+(W-pad.r)+'" y2="'+pad.t+'" stroke="'+brd+'" stroke-width="0.5"/>';
+  // Balken
+  data.forEach(function(d,i){
+    var x=pad.l+i*barW;
+    var bh=d.count>0?(d.count/max)*chartH:0;
+    var y=pad.t+chartH-bh;
+    var color=i===nowH?amber:blue;
+    if(d.count>0){
+      html+='<rect class="vpc-bar" x="'+(x+1)+'" y="'+y+'" width="'+(barW-2)+'" height="'+bh+'" fill="'+color+'" rx="2" opacity="0.85"'+
+        ' data-h="'+d.hour+'" data-c="'+d.count+'"/>';
+    } else {
+      html+='<rect x="'+(x+1)+'" y="'+(pad.t+chartH-1)+'" width="'+(barW-2)+'" height="1" fill="'+brd+'"/>';
+    }
+    // Stunden-Label (jede 3. Stunde)
+    if(i%3===0){
+      html+='<text x="'+(x+barW/2)+'" y="'+(H-5)+'" text-anchor="middle" font-size="9" fill="'+muted+'">'+d.hour+'</text>';
+    }
+  });
+  // Jetzt-Linie
+  var nowX=pad.l+nowH*barW+barW/2;
+  html+='<line class="vpc-now-line" x1="'+nowX+'" y1="'+pad.t+'" x2="'+nowX+'" y2="'+(pad.t+chartH)+'"/>';
+  // Y-Achse max
+  html+='<text x="'+(pad.l-3)+'" y="'+(pad.t+4)+'" text-anchor="end" font-size="9" fill="'+muted+'">'+max+'</text>';
+  html+='<text x="'+(pad.l-3)+'" y="'+(pad.t+chartH)+'" text-anchor="end" font-size="9" fill="'+muted+'">0</text>';
+  svg.innerHTML=html;
+  // Tooltip
+  svg.querySelectorAll('.vpc-bar').forEach(function(rect){
+    rect.addEventListener('mouseenter',function(e){
+      var h=rect.getAttribute('data-h');
+      var c=rect.getAttribute('data-c');
+      tip.textContent=h+':00 — '+c+' Bon'+(c==1?'':'s');
+      tip.style.display='block';
+    });
+    rect.addEventListener('mousemove',function(e){
+      var wrap=svg.closest('.vpc-wrap');
+      var br=wrap.getBoundingClientRect();
+      tip.style.left=(e.clientX-br.left+10)+'px';
+      tip.style.top=(e.clientY-br.top-30)+'px';
+    });
+    rect.addEventListener('mouseleave',function(){tip.style.display='none';});
+  });
+}
+
 function sv(v){
   S.view=v;
   document.getElementById('tO').classList.toggle('active',v==='orders');
@@ -445,7 +525,7 @@ function sv(v){
   document.getElementById('main').style.display = (v==='virtual'||v==='history') ? 'none' : '';
   if(v==='history') histLoad();
   const vpView=document.getElementById('vp-view');
-  if(vpView){vpView.classList.toggle('active',v==='virtual');if(v==='virtual'){vpLoad();vpStartTimer();}else if(VP.timer){clearInterval(VP.timer);VP.timer=null;}}
+  if(vpView){vpView.classList.toggle('active',v==='virtual');if(v==='virtual'){vpLoad();vpStartTimer();vpcLoad();}else if(VP.timer){clearInterval(VP.timer);VP.timer=null;}}
   render();
 }
 function render(){S.view==='orders'?rOrders():rProducts();}
@@ -830,4 +910,5 @@ async function vInit() {
 }
 vInit();
 setInterval(function(){ if(S.view==='virtual') vLoadBons(); },5000);
+
 
