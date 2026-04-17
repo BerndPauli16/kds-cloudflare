@@ -237,7 +237,41 @@ async function handleAPI(request, env, url, method) {
       return jsonResponse(rows.results || []);
     }
 
-    // ── /api/stats/bons-by-hour ─────────────────────────────────────────────
+    // ── /api/stats/items-by-hour (aus tickets+ticket_items) ───────────────────
+    if (path === '/stats/items-by-hour' && method === 'GET') {
+      const days = parseInt(url.searchParams.get('days') || '1');
+      const kellner = url.searchParams.get('kellner') || null;
+      const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString().replace('T',' ').slice(0,19);
+      let sql, binds;
+      if (kellner) {
+        sql = "SELECT strftime('%H', t.created_at) as hour, COUNT(DISTINCT t.id) as tickets, SUM(ti.quantity) as items FROM tickets t JOIN ticket_items ti ON ti.ticket_id = t.id WHERE t.created_at >= ? AND t.kellner = ? GROUP BY hour ORDER BY hour";
+        binds = [cutoff, kellner];
+      } else {
+        sql = "SELECT strftime('%H', t.created_at) as hour, COUNT(DISTINCT t.id) as tickets, SUM(ti.quantity) as items FROM tickets t JOIN ticket_items ti ON ti.ticket_id = t.id WHERE t.created_at >= ? GROUP BY hour ORDER BY hour";
+        binds = [cutoff];
+      }
+      const { results } = await env.DB.prepare(sql).bind(...binds).all().catch(() => ({ results: [] }));
+      // Alle 24 Stunden auffüllen
+      const map = {};
+      for (const r of (results || [])) map[r.hour] = { tickets: r.tickets || 0, items: r.items || 0 };
+      const hours = Array.from({length: 24}, (_, i) => {
+        const h = String(i).padStart(2, '0');
+        return { hour: h, ...(map[h] || { tickets: 0, items: 0 }) };
+      });
+      return jsonResponse(hours);
+    }
+
+    // Kellner-Liste für Diagramm
+    if (path === '/stats/kellner' && method === 'GET') {
+      const days = parseInt(url.searchParams.get('days') || '1');
+      const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString().replace('T',' ').slice(0,19);
+      const { results } = await env.DB.prepare(
+        "SELECT DISTINCT kellner FROM tickets WHERE created_at >= ? AND kellner IS NOT NULL AND kellner != '' ORDER BY kellner"
+      ).bind(cutoff).all().catch(() => ({ results: [] }));
+      return jsonResponse((results||[]).map(r=>r.kellner));
+    }
+
+        // ── /api/stats/bons-by-hour ─────────────────────────────────────────────
     if (path === '/stats/bons-by-hour' && method === 'GET') {
       const days = parseInt(url.searchParams.get('days') || '1');
       const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
