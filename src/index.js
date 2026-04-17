@@ -186,7 +186,9 @@ async function handleAPI(request, env, url, method) {
       requireApiKey(request, env);
       const row = await env.DB.prepare("SELECT value FROM kv_store WHERE key='printer_config'").first().catch(() => null);
       const cfg = row ? JSON.parse(row.value) : { proxyIp: '192.168.192.70', proxyPort: 8009 };
-      const piUrl = `http://${cfg.proxyIp||'192.168.192.70'}:${cfg.proxyPort||8009}/test-print`;
+      // Tunnel-URL verwenden - Worker kann lokale IPs nicht erreichen!
+      // print.team24.training ist der Tunnel direkt zum Pi
+      const piUrl = `http://print.team24.training/test-print`;
       try {
         const res = await fetch(piUrl, {
           method: 'POST',
