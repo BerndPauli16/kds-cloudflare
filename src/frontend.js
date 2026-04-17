@@ -284,6 +284,19 @@ export function getHTML() {
   .vp-play.paused{border-color:var(--amber);color:var(--amber)}
   .vp-bons{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
   .vp-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--muted);gap:8px;font-size:13px}
+  /* ── Umsatz/Bons-Chart ── */
+  #vpChart{flex-shrink:0;padding:16px 20px 0;border-top:1px solid var(--brd)}
+  .vpc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .vpc-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .vpc-seg{display:flex;background:var(--sur2);border-radius:5px;padding:2px;gap:2px}
+  .vpc-btn{background:none;border:none;color:var(--muted);font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer;transition:all .15s}
+  .vpc-btn.active{background:var(--amber);color:#000}
+  .vpc-wrap{position:relative;height:120px;width:100%}
+  .vpc-svg{width:100%;height:100%;overflow:visible}
+  .vpc-bar{transition:opacity .15s}
+  .vpc-bar:hover{opacity:.7}
+  .vpc-tooltip{position:absolute;background:var(--sur2);border:1px solid var(--brd2);border-radius:5px;padding:5px 9px;font-size:11px;font-family:var(--mono);color:var(--txt);pointer-events:none;display:none;white-space:nowrap;z-index:10}
+  .vpc-now-line{stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3}
   .bon-card{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px;transition:border-color .15s}
   .bon-card:hover{border-color:var(--brd2)}
   .bon-card-body{flex:1;min-width:0}
@@ -391,6 +404,20 @@ export function getHTML() {
   </div>
   <div class="vp-bons" id="vpBons">
     <div class="vp-empty">⏳ Lade Bons…</div>
+  </div>
+  <div id="vpChart">
+    <div class="vpc-header">
+      <span class="vpc-title">📊 Bons je Stunde</span>
+      <div class="vpc-seg">
+        <button class="vpc-btn active" id="vpc1" onclick="vpcDays(1)">Heute</button>
+        <button class="vpc-btn" id="vpc7" onclick="vpcDays(7)">7 Tage</button>
+        <button class="vpc-btn" id="vpc30" onclick="vpcDays(30)">30 Tage</button>
+      </div>
+    </div>
+    <div class="vpc-wrap">
+      <svg class="vpc-svg" id="vpcSvg" viewBox="0 0 480 120" preserveAspectRatio="none"></svg>
+      <div class="vpc-tooltip" id="vpcTip"></div>
+    </div>
   </div>
 </div>
 <div id="histView">
@@ -528,3 +555,4 @@ export function getHTML() {
 </body>
 </html>`;
 }
+
