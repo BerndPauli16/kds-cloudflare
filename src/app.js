@@ -783,7 +783,7 @@ async function histLoad() {
         : '<span class="hr-badge open">⏳ offen</span>';
       var dauer = isSent && t.wait_mins !== undefined
         ? '<span class="hr-dauer">'+t.wait_mins+' min</span>' : '';
-      var tisch = t.table_number ? 'Tisch ' + t.table_number : t.ticket_number;
+      var tisch = t.table_number || t.ticket_number;
       var kel = t.kellner ? '<span class="hr-kel">'+t.kellner+'</span>' : '';
       var bon = '<span class="hr-bon">#'+t.ticket_number+'</span>';
       var items = (t.items||[]).map(function(i){
