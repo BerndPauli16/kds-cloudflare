@@ -237,6 +237,23 @@ async function handleAPI(request, env, url, method) {
       return jsonResponse(rows.results || []);
     }
 
+    // ── /api/stats/bons-by-hour ─────────────────────────────────────────────
+    if (path === '/stats/bons-by-hour' && method === 'GET') {
+      const days = parseInt(url.searchParams.get('days') || '1');
+      const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
+      const { results } = await env.DB.prepare(
+        "SELECT strftime('%H', created_at) as hour, COUNT(*) as count FROM bon_log WHERE type='incoming' AND created_at >= ? GROUP BY hour ORDER BY hour"
+      ).bind(cutoff).all().catch(() => ({ results: [] }));
+      // Alle 24 Stunden auffüllen
+      const map = {};
+      for (const r of (results || [])) map[r.hour] = r.count;
+      const hours = Array.from({length: 24}, (_, i) => {
+        const h = String(i).padStart(2, '0');
+        return { hour: h, count: map[h] || 0 };
+      });
+      return jsonResponse(hours);
+    }
+
     if (path === '/bon-log' && method === 'DELETE') {
       requireApiKey(request, env);
       const b = await request.json().catch(() => ({}));
@@ -567,3 +584,4 @@ function requireApiKey(request, env) {
   const key = request.headers.get('X-API-Key');
   if (!env.API_KEY || key !== env.API_KEY) throw Object.assign(new Error('Unauthorized'), { status: 401 });
 }
+
