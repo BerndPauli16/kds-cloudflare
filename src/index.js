@@ -382,6 +382,37 @@ async function handleAPI(request, env, url, method) {
       return jsonResponse({ ok: true, deleted: result });
     }
 
+
+    // ── /api/status – System-Übersicht ───────────────────────────────────────
+    if (path === '/status' && method === 'GET') {
+      const agentRow = await env.DB.prepare('SELECT ip, stationId, updated_at FROM agent_state ORDER BY updated_at DESC LIMIT 1').first().catch(() => null);
+      const ticketCount = await env.DB.prepare("SELECT COUNT(*) as n FROM tickets WHERE status != 'done'").first().catch(() => ({ n: 0 }));
+      return jsonResponse({
+        ok: true,
+        worker: 'kds-cloudflare',
+        timestamp: new Date().toISOString(),
+        openTickets: ticketCount?.n ?? 0,
+        agent: agentRow ? { ip: agentRow.ip, stationId: agentRow.stationId, lastSeen: agentRow.updated_at } : null,
+      });
+    }
+
+    // ── /api/print-jobs (GET ohne sub-path) → Alias für pending ─────────────
+    if (path === '/print-jobs' && method === 'GET') {
+      const stationId = url.searchParams.get('station');
+      let jobs;
+      if (stationId) {
+        const r = await env.DB.prepare("SELECT pj.*, t.table_number FROM print_jobs pj JOIN tickets t ON pj.ticket_id = t.id WHERE pj.status = 'pending' AND t.station_id = ? ORDER BY pj.created_at ASC").bind(parseInt(stationId)).all();
+        jobs = r.results || [];
+      } else {
+        const r = await env.DB.prepare("SELECT pj.*, t.table_number FROM print_jobs pj JOIN tickets t ON pj.ticket_id = t.id WHERE pj.status = 'pending' ORDER BY pj.created_at ASC").all();
+        jobs = r.results || [];
+      }
+      return jsonResponse(jobs.map(j => ({
+        ...j,
+        payload: (() => { try { return JSON.parse(j.payload); } catch { return j.payload; } })()
+      })));
+    }
+
     return jsonResponse({ error: 'Not found' }, 404);
 
   } catch (err) {
