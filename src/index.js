@@ -413,9 +413,9 @@ async function handleAPI(request, env, url, method) {
         t.items = items.results || [];
         // Wartezeit berechnen
         if (t.printed_at && t.created_at) {
-          t.wait_mins = Math.round((new Date(t.printed_at) - new Date(t.created_at)) / 60000);
+          t.wait_mins = Math.round((new Date((t.printed_at||'').replace(' ','T')+'Z') - new Date((t.created_at||'').replace(' ','T')+'Z')) / 60000);
         } else if (t.created_at) {
-          t.wait_mins = Math.round((Date.now() - new Date(t.created_at).getTime()) / 60000);
+          t.wait_mins = Math.round((Date.now() - new Date((t.created_at||'').replace(' ','T')+'Z').getTime()) / 60000);
         } else {
           t.wait_mins = 0;
         }
@@ -497,7 +497,7 @@ async function getTickets(env, stationId) {
   const now = Date.now();
   for (const ticket of tickets) {
     ticket.items = itemsByTicket[ticket.id] || [];
-    ticket.wait_mins = Math.floor((now - new Date(ticket.created_at).getTime()) / 60000);
+    ticket.wait_mins = Math.floor((now - new Date((ticket.created_at||'').replace(' ','T')+'Z').getTime()) / 60000);
   }
   return tickets;
 }
