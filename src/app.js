@@ -1,14 +1,30 @@
 var NL=String.fromCharCode(10);
 
 const S={view:'orders',tickets:[],totals:[],ws:null,prev:{},sel:{}};
+(function(){var h=location.hostname.split('.')[0];if(h==='monitor2')S.station='2';else if(h==='monitor1')S.station='1';})();
 let curRot='landscape';
 
 // ─── Drucker-Konfiguration ───────────────────────────────────────────────
 const API_KEY = 'kds-smarte-events-2026';
 
+function saveDisplayName() {
+  var name = document.getElementById('cfgDisplayName').value.trim();
+  if (name) {
+    localStorage.setItem('kds_display_name', name);
+    document.getElementById('mHost').textContent = name;
+  } else {
+    localStorage.removeItem('kds_display_name');
+    document.getElementById('mHost').textContent = location.hostname.split('.')[0];
+  }
+  var btn = document.querySelector('[onclick="saveDisplayName()"]');
+  if (btn) { btn.textContent = '✓ Gespeichert'; setTimeout(()=>{ btn.textContent = '💾 Speichern'; }, 1500); }
+}
 function openCfg() {
+  // Input mit aktuellem Namen befüllen
+  var inp = document.getElementById('cfgDisplayName');
+  if (inp) inp.value = localStorage.getItem('kds_display_name') || '';
   // Pi-IP vom Agent-Endpoint laden (vom Pi selbst gemeldet)
-  fetch('/api/agent').then(r=>r.json()).then(agent => {
+  fetch('/api/agent' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(agent => {
     if (agent && agent.ip) {
       document.getElementById('piIpDisplay').textContent = agent.ip;
       if (document.getElementById('aselloIp')) document.getElementById('aselloIp').textContent = agent.ip;
@@ -21,12 +37,14 @@ function openCfg() {
     document.getElementById('piIpDisplay').textContent = '192.168.192.70 (fix)';
   });
 
-  fetch('/api/config').then(r=>r.json()).then(cfg => {
+  fetch('/api/config' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(cfg => {
     document.getElementById('cfgProxyIp').value    = cfg.proxyIp      || '192.168.192.70';
     document.getElementById('cfgProxyPort').value  = cfg.proxyPort    || '8009';
     document.getElementById('cfgPrinterIp').value  = cfg.printerIp    || '192.168.192.202';
     document.getElementById('cfgPrinterPort').value= cfg.printerPort  || '9100';
     document.getElementById('cfgChars').value      = cfg.charsPerLine || '42';
+    document.getElementById('cfgBackupIp').value   = cfg.backupIp     || '';
+    document.getElementById('cfgBackupPort').value = cfg.backupPort   || '9100';
     updateProxyPreview(); updateCplPreview();
     document.getElementById('cfgModal').classList.add('open');
   }).catch(() => {
@@ -92,6 +110,9 @@ async function saveCfg() {
     printerIp:   document.getElementById('cfgPrinterIp').value.trim(),
     printerPort: parseInt(document.getElementById('cfgPrinterPort').value) || 9100,
     charsPerLine:parseInt(document.getElementById('cfgChars').value) || 42,
+    stationId:   S.station || null,
+    backupIp:    document.getElementById('cfgBackupIp').value.trim(),
+    backupPort:  parseInt(document.getElementById('cfgBackupPort').value) || 9100,
   };
   try {
     const res = await fetch('/api/config', {
@@ -106,6 +127,37 @@ async function saveCfg() {
       cfgMsg('Fehler beim Speichern', 'err');
     }
   } catch(e) { cfgMsg('Netzwerkfehler: ' + e.message, 'err'); }
+}
+
+// Drucker-Scan: Pi triggert Auto-Discovery
+async function doScanPrinter() {
+  const btn = document.getElementById('scanBtn');
+  if(btn) { btn.textContent='⏳'; btn.disabled=true; }
+  try {
+    // Pi-IP holen
+    const agentRes = await fetch('/api/agent' + (S.station ? '?station=' + S.station : ''));
+    const agent = await agentRes.json();
+    if(!agent || !agent.ip) { alert('Pi nicht erreichbar!'); return; }
+    // Pi-Proxy triggern: DELETE request auf /scan-printer
+    const piUrl = 'http://' + agent.ip;
+    const r = await fetch(piUrl + '/scan-printer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trigger: true })
+    });
+    const d = await r.json().catch(()=>({error:'Keine Antwort'}));
+    if(d.found) {
+      document.getElementById('cfgPrinterIp').value = d.ip;
+      if(btn) { btn.textContent='✓'; setTimeout(()=>{btn.textContent='🔍';btn.disabled=false;},2000); }
+      showCfgMsg('Drucker gefunden: ' + d.ip, false);
+    } else {
+      if(btn) { btn.textContent='✗'; setTimeout(()=>{btn.textContent='🔍';btn.disabled=false;},2000); }
+      showCfgMsg('Kein Drucker gefunden im Netzwerk', true);
+    }
+  } catch(e) {
+    if(btn) { btn.textContent='🔍'; btn.disabled=false; }
+    showCfgMsg('Fehler: ' + e.message, true);
+  }
 }
 
 async function doTestPrint() {
@@ -163,25 +215,48 @@ window.addEventListener('resize',applyT);
 (()=>{const s=localStorage.getItem('kr')||'landscape';rot(s);})();
 
 (()=>{
-  fetch('/api/config').then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
+  fetch('/api/config' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
 
-  fetch('/api/agent').then(r=>r.json()).then(d=>{
-    if(d&&d.hostname) document.getElementById('mHost').textContent=d.hostname;
-    if(d&&d.ip)       document.getElementById('mIp').textContent=d.ip;
-  }).catch(()=>{ document.getElementById('mHost').textContent='monitor1'; });
+  // Anzeigename: gespeicherter Name aus localStorage oder URL-Hostname
+  var _savedName = localStorage.getItem('kds_display_name');
+  var _defaultName = location.hostname.split('.')[0];
+  document.getElementById('mHost').textContent = _savedName || _defaultName;
+  // Pi-IP vom Heartbeat laden (alle 30s aktuell)
+  function refreshPiIp(){
+    var ipEl  = document.getElementById('mIp');
+    var cfgEl = document.querySelector('.cfg-btn');
+    fetch('/api/agent' + (S.station ? '?station=' + S.station : ''))
+      .then(r=>r.json())
+      .then(function(a){
+        if (!a || !a.ip) {
+          ipEl.textContent = 'OFFLINE'; ipEl.classList.add('pi-offline');
+          if(cfgEl) cfgEl.classList.add('pi-offline'); return;
+        }
+        var ageSec = a.updated_at ? Math.round((Date.now() - new Date(a.updated_at).getTime()) / 1000) : 999;
+        if (ageSec > 90) {
+          ipEl.textContent = 'OFFLINE  ' + a.ip; ipEl.classList.add('pi-offline');
+          if(cfgEl) cfgEl.classList.add('pi-offline');
+        } else {
+          ipEl.textContent = a.ip; ipEl.classList.remove('pi-offline');
+          if(cfgEl) cfgEl.classList.remove('pi-offline');
+        }
+      })
+      .catch(function(){ ipEl.textContent = '–.–.–.–'; });
+  }
+  refreshPiIp();
   setInterval(()=>{
-    fetch('/api/config').then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
-
-  fetch('/api/agent').then(r=>r.json()).then(d=>{
-      if(d&&d.hostname) document.getElementById('mHost').textContent=d.hostname;
-      if(d&&d.ip)       document.getElementById('mIp').textContent=d.ip;
-    }).catch(()=>{});
+    fetch('/api/config' + (S.station ? '?station=' + S.station : '')).then(r=>r.json()).then(d=>{if(d&&d.printerIp)document.getElementById('pipInp').value=d.printerIp;}).catch(()=>{});
+    refreshPiIp();
   }, 30000);
 })();
 
 // Pins: {name: {slot, color}} – localStorage
 const PINS = JSON.parse(localStorage.getItem('kds_pins') || '{}');
 function savePins(){ localStorage.setItem('kds_pins', JSON.stringify(PINS)); }
+
+// Farben für ALLE Produkte (auch nicht-gepinnte) – bleiben erhalten
+const COLORS = JSON.parse(localStorage.getItem('kds_colors') || '{}');
+function saveColors(){ localStorage.setItem('kds_colors', JSON.stringify(COLORS)); }
 
 function movePin(name, dir) {
   if (!PINS[name]) return;
@@ -212,10 +287,13 @@ function togglePin(name) {
 }
 
 function setPinColor(name, color) {
-  if (!PINS[name]) return;
-  PINS[name].color = color;
-  savePins();
-  // Nur dieses Kartenbackground updaten
+  // Farbe für ALLE Produkte speichern (nicht nur gepinnte)
+  COLORS[name] = color;
+  saveColors();
+  if (PINS[name]) {
+    PINS[name].color = color;
+    savePins();
+  }
   const card = document.querySelector('[data-prod="'+name.replace(/"/g,'&quot;')+'"]');
   if (card) applyPinColor(card, color);
 }
@@ -236,27 +314,81 @@ function applyPinColor(card, color) {
   }
 }
 
-async function init(){await Promise.all([loadT(),loadTot()]);connectWS();setInterval(loadT,30000);}
-async function loadT(){S.tickets=await fetch(S.station?'/api/tickets?station='+S.station:'/api/tickets').then(r=>r.json());render();}
-async function loadTot(){S.totals=await fetch(S.station?'/api/totals?station='+S.station:'/api/totals').then(r=>r.json());renderTot();}
+async function init(){
+  await Promise.all([loadT(),loadTot()]);
+  connectWS();
+  setInterval(loadT,15000); // Alle 15s statt 30s für schnelleres Recover
+  // Netzwerkwechsel: sofort neu laden wenn online
+  window.addEventListener('online', ()=>{
+    console.log('[NET] Online – reconnect WS + reload');
+    Promise.all([loadT(),loadTot()]);
+    if(!S.ws||S.ws.readyState>1) connectWS();
+  });
+  // Aus Standby/Hintergrund zurück: Daten sofort aktualisieren
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden){
+      Promise.all([loadT(),loadTot()]);
+      if(!S.ws||S.ws.readyState>1) connectWS();
+    }
+  });
+}
+async function loadT(){
+  try{
+    const r=await fetch(S.station?'/api/tickets?station='+S.station:'/api/tickets');
+    if(r.ok){S.tickets=await r.json();render();}
+  }catch(e){/* Netzwerk nicht verfügbar - still fail */}
+}
+async function loadTot(){
+  try{
+    const r=await fetch(S.station?'/api/totals?station='+S.station:'/api/totals');
+    if(r.ok){S.totals=await r.json();renderTot();}
+  }catch(e){}
+}
 
+var _wsRetry=1000;
 function connectWS(){
-  if(S.ws)S.ws.close();
+  if(S.ws){try{S.ws.close();}catch(e){}}
+  const dot=document.getElementById('wsDot');
+  dot.className='ws-dot err';
   const ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws?station='+(S.station||'all'));
   S.ws=ws;
-  const dot=document.getElementById('wsDot');
-  ws.onopen=()=>{dot.className='ws-dot ok';setInterval(()=>ws.readyState===1&&ws.send('{"type":"ping"}'),25000);};
-  ws.onclose=()=>{dot.className='ws-dot err';setTimeout(connectWS,3000);};
-  ws.onmessage=async({data})=>{
-    const m=JSON.parse(data);
-    if(m.type==='pong') return;
-    // 300ms warten damit D1 die Writes committed hat, dann sync
+  var ping=null;
+  ws.onopen=()=>{
+    dot.className='ws-dot ok';
+    _wsRetry=1000; // Reset Backoff
+    if(ping)clearInterval(ping);
+    ping=setInterval(()=>{if(ws.readyState===1)ws.send('{"type":"ping"}');},25000);
+    // Sofort Daten laden nach Reconnect
     Promise.all([loadT(),loadTot()]);
+  };
+  ws.onclose=()=>{
+    dot.className='ws-dot err';
+    if(ping)clearInterval(ping);
+    // Exponentielles Backoff: 1s → 2s → 4s → max 30s
+    setTimeout(connectWS, _wsRetry);
+    _wsRetry=Math.min(_wsRetry*2, 30000);
+  };
+  ws.onerror=()=>{
+    dot.className='ws-dot err';
+    try{ws.close();}catch(e){}
+  };
+  ws.onmessage=({data})=>{
+    try{
+      const m=JSON.parse(data);
+      if(m.type==='pong') return;
+      Promise.all([loadT(),loadTot()]);
+    }catch(e){}
   };
 }
 
 // ─── Virtual Printer ────────────────────────────────────────────────────
 let VP={type:'in',paused:false,timer:null};
+function vpType(t){
+  VP.type=t;
+  document.getElementById('vpIn').classList.toggle('active',t==='in');
+  document.getElementById('vpOut').classList.toggle('active',t==='out');
+  vpLoad();
+}
 async function vpLoad(){
   try{
     var apiType=VP.type==='in'?'incoming':'outgoing';
@@ -267,22 +399,32 @@ async function vpLoad(){
     VP.paused=state.paused||false; vpUpdatePlayBtn();
     var el=document.getElementById('vpBons');
     if(!bons||!bons.length){el.innerHTML='<div class="vp-empty">Keine Bons vorhanden</div>';return;}
-    el.innerHTML=bons.map(function(b){
+    el.innerHTML='<div class="bon-list2">'+bons.map(function(b){
       var t=new Date(b.created_at);
       var ts=t.toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      var lines=(b.preview||'').split(NL).filter(function(l){return l.trim();});
-      var itemsHtml=lines.map(function(l){
-        if(l.indexOf('## ')===0){
-          var txt=l.slice(3).trim();
-          var m=txt.match(/(\d+)[x]?\s+(.+)/);
-          if(m) return '<div class="bon-item">'+m[1]+'x '+m[2]+'</div>';
-          return '<div class="bon-item">'+txt+'</div>';
+      var badge=VP.type==='in'?'<span class="bon-badge2 in">EINGANG</span>':'<span class="bon-badge2 out">AUSGANG</span>';
+      var lines=(b.preview||'').split(NL);
+      var bodyHtml=lines.map(function(l){
+        var esc=l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        if(!esc.trim()) return '';
+        if(esc==='---' || esc.match(/^[-=]{3,}$/)) return '<hr style="border:none;border-top:1px dashed #bbb;margin:4px 0">';
+        if(esc==='EIN TEIL VON' || esc==='DER REST VON') return '<div style="text-align:center;font-weight:700;font-size:13px;padding:3px 0;letter-spacing:.05em">'+esc+'</div>';
+        if(esc.indexOf('## ')===0){
+          var itemTxt=esc.slice(3).trim();
+          var mI=itemTxt.match(/(\d+)[x]?\s+(.+)/);
+          if(mI) return '<div style="font-weight:700;font-size:14px;padding:2px 0">'+mI[1]+'x&nbsp; '+mI[2]+'</div>';
+          return '<div style="font-weight:700;font-size:14px;padding:2px 0">'+itemTxt+'</div>';
         }
-        return '<div class="bon-small">'+l+'</div>';
+        if(esc.indexOf('BONIERT:')===0 || esc.indexOf('DAUER:')===0 || esc.indexOf('BIS GEDRUCKT')===0)
+          return '<div style="font-family:monospace;font-size:11px;color:#555;padding:1px 0">'+esc+'</div>';
+        return '<div class="bon-raw-line">'+esc+'</div>';
       }).join('');
-      var badge=VP.type==='in'?'<span class="bon-badge in">EINGANG</span>':'<span class="bon-badge out">AUSGANG</span>';
-      return '<div class="bon-card"><div class="bon-card-body"><div class="bon-card-hdr"><div>'+badge+'<span class="bon-ts"> '+ts+'</span></div><button class="bon-del" onclick="vpDelete('+b.id+')">x</button></div><div class="bon-items">'+itemsHtml+'</div></div><div class="bon-cut"></div></div>';
-    }).join('');
+      return '<div class="bon-card" style="position:relative">'+
+        '<button class="bon-del2" style="position:absolute;top:6px;right:6px;z-index:1;background:#e8e5dd80;border-radius:50%;width:22px;height:22px;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0" onclick="vpDelete('+b.id+')" title="Loeschen">&times;</button>'+
+        '<div class="bon-body2">'+bodyHtml+'</div>'+
+        '<div class="bon-cut"></div>'+
+      '</div>';
+    }).join('')+'</div>';
   }catch(e){document.getElementById('vpBons').innerHTML='<div class="vp-empty">Fehler</div>';}
 }
 
@@ -296,8 +438,12 @@ function sv(v){
   document.getElementById('tO').classList.toggle('active',v==='orders');
   document.getElementById('tP').classList.toggle('active',v==='products');
   document.getElementById('tV').classList.toggle('active',v==='virtual');
+  document.getElementById('tH') && document.getElementById('tH').classList.toggle('active',v==='history');
+  var hv=document.getElementById('histView');
+  if(hv) hv.classList.toggle('active',v==='history');
   document.getElementById('main').classList.toggle('products-view',v==='products');
-  document.getElementById('main').style.display = v==='virtual' ? 'none' : '';
+  document.getElementById('main').style.display = (v==='virtual'||v==='history') ? 'none' : '';
+  if(v==='history') histLoad();
   const vpView=document.getElementById('vp-view');
   if(vpView){vpView.classList.toggle('active',v==='virtual');if(v==='virtual'){vpLoad();vpStartTimer();}else if(VP.timer){clearInterval(VP.timer);VP.timer=null;}}
   render();
@@ -328,7 +474,7 @@ function rOrders(){
       return '<div class="'+cls+'"'+click+'><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
     }).join('');
     const hasSel=t.items.some((_,idx)=>(S.sel[t.id+'-'+idx]||0)>0);
-    card.innerHTML='<div class="tc-head"><div><div class="tc-num">#'+t.ticket_number+'</div><div class="tc-tbl">'+(t.table_number||'–')+'</div></div><div style="display:flex;align-items:center;gap:6px"><span class="tc-wait '+urg+'">'+t.wait_mins+'min</span>'+(t.station_color?'<span class="s-badge" style="background:'+t.station_color+'22;color:'+t.station_color+';border:1px solid '+t.station_color+'44">'+t.station_name+'</span>':'')+'</div></div><div class="tc-items">'+itemsHtml+'</div><div class="tc-foot"><button class="btn-p" onclick="prt('+t.id+')" '+(t.status==='printing'?'disabled':'')+'>🖨 '+(t.status==='printing'?'Druckt…':'Drucken')+'</button><button class="btn-partial" id="bp-'+t.id+'" onclick="partPrt('+t.id+')" '+(hasSel?'':'disabled')+'>✂ Teildruck</button></div>';
+    card.innerHTML='<div class="tc-head"><div><div class="tc-num">#'+t.ticket_number+'</div><div class="tc-tbl">'+(t.table_number||'Bon #'+t.ticket_number)+'</div></div><div style="display:flex;align-items:center;gap:6px"><span class="tc-wait '+urg+'">'+t.wait_mins+'min</span>'+(t.station_color?'<span class="s-badge" style="background:'+t.station_color+'22;color:'+t.station_color+';border:1px solid '+t.station_color+'44">'+t.station_name+'</span>':'')+'</div></div><div class="tc-items">'+itemsHtml+'</div><div class="tc-foot"><button class="btn-p" onclick="prt('+t.id+')" '+(t.status==='printing'?'disabled':'')+'>🖨 '+(t.status==='printing'?'Druckt…':'Drucken')+'</button><button class="btn-partial" id="bp-'+t.id+'" onclick="partPrt('+t.id+')" '+(hasSel?'':'disabled')+'>✂ Teildruck</button></div>';
     g.appendChild(card);
   });
   ta.innerHTML='';ta.appendChild(g);
@@ -367,7 +513,7 @@ function rProducts(){
   })).sort((a,b)=>PINS[a.n].slot-PINS[b.n].slot);
 
   // Ungepinnte: nur qty>0, alphabetisch
-  const unpinned=prods.filter(p=>!PINS[p.n]).sort((a,b)=>a.n.localeCompare(b.n));
+  const unpinned=prods.filter(p=>!PINS[p.n]).sort((a,b)=>b.tot-a.tot||a.n.localeCompare(b.n));
 
   // Gepinnte zuerst, dann Ungepinnte
   const result=[...pinnedItems,...unpinned];
@@ -376,23 +522,31 @@ function rProducts(){
     const pin=PINS[n];
     const isPinned=!!pin;
     const isZero=tot<=0;
-    const color=pin&&pin.color?pin.color:null;
+    const color=COLORS[n]||(pin&&pin.color?pin.color:null);
     const g=document.createElement('div');
     g.className='pg'+(isPinned?' pinned-card':'')+(isZero?' zero':'');
     g.dataset.prod=n;
     const pinnedCount=Object.keys(PINS).length;
     const mySlot=pin?pin.slot:null;
+    var pinColor = color || '#f59e0b';
+    // Neues Layout: Footer mit ◀ [📌 Farbe] ▶ — immer sichtbar
     g.innerHTML='<div class="pgh"><div class="pgn">'+n+'</div><div class="pgt">'+(isZero?'':Math.round(tot))+'</div></div>'
-      +(isPinned?'<button class="color-btn" title="Farbe wählen" style="background:'+(color||'#888')+'"></button><input type="color" class="color-inp" value="'+(color||'#f59e0b')+'">':'')
-      +'<button class="pin-btn'+(isPinned?' pinned':'')+'">📌</button>'
-      +(isPinned?'<button class="move-btn left">◀</button><button class="move-btn right">▶</button>':'');
-    if (isPinned) applyPinColor(g, color);
+      +'<div class="pg-footer">'
+        +(isPinned?'<button class="move-btn left" title="Nach links">◀</button>':'<div style="width:38px"></div>')
+        +'<div class="pg-center">'
+          +'<button class="pin-btn'+(isPinned?' pinned':'')+'">📌</button>'
+          +'<button class="color-btn" title="Farbe wählen" style="background:'+pinColor+'"></button>'
+          +'<input type="color" class="color-inp" value="'+pinColor+'">'
+        +'</div>'
+        +(isPinned?'<button class="move-btn right" title="Nach rechts">▶</button>':'<div style="width:38px"></div>')
+      +'</div>';
+    if (color) applyPinColor(g, color);
     g.querySelector('.pin-btn').addEventListener('click',e=>{e.stopPropagation();togglePin(n);});
+    const ci=g.querySelector('.color-inp');
+    const cb=g.querySelector('.color-btn');
+    cb.addEventListener('click',e=>{e.stopPropagation();ci.click();});
+    ci.addEventListener('input',e=>{e.stopPropagation();setPinColor(n,e.target.value);});
     if(isPinned){
-      const ci=g.querySelector('.color-inp');
-      const cb=g.querySelector('.color-btn');
-      cb.addEventListener('click',e=>{e.stopPropagation();ci.click();});
-      ci.addEventListener('input',e=>{e.stopPropagation();setPinColor(n,e.target.value);});
       g.querySelector('.move-btn.left').addEventListener('click',e=>{e.stopPropagation();movePin(n,-1);});
       g.querySelector('.move-btn.right').addEventListener('click',e=>{e.stopPropagation();movePin(n,1);});
     }
@@ -421,7 +575,7 @@ function renderTot(){
   } else {
     sorted.forEach(t=>{
       const pin=PINS[t.product_name];
-      const col=pin&&pin.color?pin.color:null;
+      const col=COLORS[t.product_name]||(pin&&pin.color?pin.color:null);
       const row=document.createElement('div');
       row.className='tot-row';
       if(col) row.style.cssText='background:'+col+'33;border-left:3px solid '+col;
@@ -579,6 +733,96 @@ function vRenderPreview(preview) {
     }
     return '<div class="bon-small">'+l+'</div>';
   }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  BESTELLVERLAUF
+// ═══════════════════════════════════════════════════════
+var HIST = { kellner: null, tisch: null };
+
+// Tisch-Input Event-Listener einmalig setzen
+(function() {
+  var ti = document.getElementById('histTischInp');
+  if (!ti) return;
+  var debTimer;
+  ti.addEventListener('input', function() {
+    HIST.tisch = ti.value.trim() || null;
+    if (HIST.tisch) {
+      HIST.kellner = null;
+      // Kellner-Buttons deaktivieren
+      document.querySelectorAll('.kl-btn').forEach(function(b) { b.classList.remove('active'); });
+    }
+    ti.classList.toggle('active', !!HIST.tisch);
+    clearTimeout(debTimer);
+    debTimer = setTimeout(histLoad, 400);
+  });
+})();
+
+async function histLoad() {
+  var list = document.getElementById('histList');
+  if(!list) return;
+  list.innerHTML = '<div class="hist-empty">Lade…</div>';
+  try {
+    var url = '/api/history?limit=100' + (HIST.tisch ? '&tisch=' + encodeURIComponent(HIST.tisch) : (HIST.kellner ? '&kellner=' + encodeURIComponent(HIST.kellner) : ''));
+    var r = await fetch(url);
+    var d = await r.json();
+    // Kellner-Buttons rendern
+    histRenderKellner(d.kellnerList || []);
+    // Tickets rendern
+    if(!d.tickets || !d.tickets.length) {
+      list.innerHTML = '<div class="hist-empty">Keine Bestellungen</div>';
+      return;
+    }
+    list.innerHTML = d.tickets.map(function(t) {
+      var isSent = t.printed_at || t.status === 'done';
+      var boniert = t.created_at ? new Date(t.created_at).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '–';
+      var datum = t.created_at ? new Date(t.created_at).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit'}) : '';
+      var gedruckt = t.printed_at ? new Date(t.printed_at).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : null;
+      var badge = isSent
+        ? '<span class="hr-badge sent">✓ ' + (gedruckt || 'gedruckt') + '</span>'
+        : '<span class="hr-badge open">⏳ offen</span>';
+      var dauer = isSent && t.wait_mins !== undefined
+        ? '<span class="hr-dauer">'+t.wait_mins+' min</span>' : '';
+      var tisch = t.table_number ? 'Tisch ' + t.table_number : t.ticket_number;
+      var kel = t.kellner ? '<span class="hr-kel">'+t.kellner+'</span>' : '';
+      var bon = '<span class="hr-bon">#'+t.ticket_number+'</span>';
+      var items = (t.items||[]).map(function(i){
+        return '<span class="hr-item">'+i.quantity+'× '+i.product_name+'</span>';
+      }).join('');
+      return '<div class="hr">'+
+        '<div class="hr-head">'+
+          '<span class="hr-tisch">'+tisch+'</span>'+
+          kel+bon+
+          '<span class="hr-time">'+datum+' '+boniert+'</span>'+
+        '</div>'+
+        '<div class="hr-head" style="margin-top:2px">'+
+          badge+dauer+
+        '</div>'+
+        (items ? '<div class="hr-items">'+items+'</div>' : '')+
+      '</div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="hist-empty">Fehler beim Laden</div>';
+  }
+}
+
+function histRenderKellner(list) {
+  var tb = document.getElementById('histToolbar');
+  if(!tb) return;
+  tb.innerHTML = '<span class="hist-toolbar-title">Kellner:</span>';
+  // "Alle" Button
+  var allBtn = document.createElement('button');
+  allBtn.className = 'kl-btn' + (HIST.kellner === null ? ' active' : '');
+  allBtn.textContent = 'Alle';
+  allBtn.onclick = function() { HIST.kellner = null; histLoad(); };
+  tb.appendChild(allBtn);
+  list.forEach(function(k) {
+    var btn = document.createElement('button');
+    btn.className = 'kl-btn' + (!HIST.tisch && HIST.kellner === k ? ' active' : '');
+    btn.textContent = k;
+    btn.onclick = function() { HIST.kellner = k; HIST.tisch = null; histLoad(); };
+    tb.appendChild(btn);
+  });
 }
 
 async function vInit() {
