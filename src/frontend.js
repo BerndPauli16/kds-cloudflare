@@ -297,6 +297,27 @@ export function getHTML() {
   .vpc-bar:hover{opacity:.7}
   .vpc-tooltip{position:absolute;background:var(--sur2);border:1px solid var(--brd2);border-radius:5px;padding:5px 9px;font-size:11px;font-family:var(--mono);color:var(--txt);pointer-events:none;display:none;white-space:nowrap;z-index:10}
   .vpc-now-line{stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3}
+  /* ── Diagramm-View ── */
+  #diagView{display:none;flex-direction:column;overflow-y:auto;height:calc(100vh - var(--hh));padding:20px;width:100%;gap:16px}
+  #diagView.active{display:flex}
+  .diag-card{background:var(--sur);border:1px solid var(--brd);border-radius:10px;padding:18px}
+  .diag-card-title{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .diag-seg{display:flex;background:var(--sur2);border-radius:5px;padding:2px;gap:2px}
+  .diag-btn{background:none;border:none;color:var(--muted);font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer;transition:all .15s}
+  .diag-btn.active{background:var(--amber);color:#000}
+  .diag-kl-wrap{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+  .diag-kl-btn{background:none;border:1px solid var(--brd);color:var(--muted);font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
+  .diag-kl-btn.active{border-color:var(--amber);color:var(--amber);background:rgba(245,158,11,.12)}
+  .diag-chart-wrap{position:relative;height:160px;width:100%}
+  .diag-svg{width:100%;height:100%;overflow:visible}
+  .diag-bar{transition:opacity .15s;cursor:pointer}
+  .diag-bar:hover{opacity:.65}
+  .diag-tooltip{position:absolute;background:var(--sur2);border:1px solid var(--brd2);border-radius:6px;padding:7px 11px;font-size:11px;font-family:var(--mono);color:var(--txt);pointer-events:none;display:none;white-space:nowrap;z-index:10;line-height:1.6}
+  .diag-now-line{stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3}
+  .diag-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+  .diag-stat{background:var(--sur2);border-radius:7px;padding:12px;text-align:center}
+  .diag-stat-val{font-size:22px;font-weight:800;color:var(--amber);font-family:var(--mono)}
+  .diag-stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
   .bon-card{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px;transition:border-color .15s}
   .bon-card:hover{border-color:var(--brd2)}
   .bon-card-body{flex:1;min-width:0}
@@ -378,6 +399,7 @@ export function getHTML() {
       <button class="tab active" id="tO" onclick="sv('orders')">Bestellungen</button>
       <button class="tab"        id="tP" onclick="sv('products')">Produkte</button>
       <button class="tab"        id="tV" onclick="sv('virtual')">Virtuell</button>
+      <button class="tab"        id="tD" onclick="sv('diagram')">Diagramm</button>
       <button class="tab"        id="tH" onclick="sv('history')">Verlauf</button>
     </div>
     <div class="ws-dot" id="wsDot"></div>
@@ -430,6 +452,30 @@ export function getHTML() {
   </div>
   <div class="hist-list" id="histList"><div class="hist-empty">Lade Verlauf…</div></div>
 </div>
+</div>
+<div id="diagView">
+  <div class="diag-card">
+    <div class="diag-card-title">
+      <span>📊 Artikel je Stunde</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="diag-kl-wrap" id="diagKlWrap" style="margin-bottom:0"></div>
+        <div class="diag-seg">
+          <button class="diag-btn active" id="dg1" onclick="dgDays(1)">Heute</button>
+          <button class="diag-btn" id="dg7" onclick="dgDays(7)">7 Tage</button>
+          <button class="diag-btn" id="dg30" onclick="dgDays(30)">30 Tage</button>
+        </div>
+      </div>
+    </div>
+    <div class="diag-chart-wrap">
+      <svg class="diag-svg" id="diagSvg" viewBox="0 0 480 160" preserveAspectRatio="none"></svg>
+      <div class="diag-tooltip" id="diagTip"></div>
+    </div>
+    <div class="diag-summary" id="diagSummary">
+      <div class="diag-stat"><div class="diag-stat-val" id="dgStatTickets">–</div><div class="diag-stat-lbl">Bons</div></div>
+      <div class="diag-stat"><div class="diag-stat-val" id="dgStatItems">–</div><div class="diag-stat-lbl">Artikel</div></div>
+      <div class="diag-stat"><div class="diag-stat-val" id="dgStatPeak">–</div><div class="diag-stat-lbl">Spitzenstunde</div></div>
+    </div>
+  </div>
 </div>
 
 
