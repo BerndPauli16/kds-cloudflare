@@ -374,18 +374,17 @@ function parseEposXml(xmlStr) {
     const userM = xmlStr.match(/Benutzer:\s*(.+?)&#10;/);
     if (userM) senderName = userM[1].trim();
 
-    // Bereich als Tischnummer (kompletter Text, z.B. "HD Galerie / T 1")
-    const bereichM = xmlStr.match(/Bereich:\s*(.+?)&#10;/);
-    if (bereichM) { tableNumber = bereichM[1].trim(); }
-
     // Artikel: <text width="2" height="2">1 Spritzer&#10;</text>
     // Format: Zahl + Leerzeichen + Produktname
     const bigTextRe = /<text[^>]*width="2"[^>]*height="2"[^>]*>([^<]+)<\/text>/gi;
     let m;
     while ((m = bigTextRe.exec(xmlStr)) !== null) {
       const txt = m[1].replace(/&#10;/g,'').trim();
-      // Bereich-Zeile überspringen (bereits als Tisch gesetzt)
-      if (/^Bereich:/i.test(txt)) continue;
+      // Bereich: kompletten Text als Tischnummer verwenden (z.B. "HD Galerie / T 1")
+      if (/^Bereich:/i.test(txt)) {
+        tableNumber = txt.replace(/^Bereich:\s*/i, '').trim();
+        continue;
+      }
       const itemM = txt.match(/^(\d+)\s+(.+)$/);
       if (itemM) {
         const qty = parseInt(itemM[1]);
