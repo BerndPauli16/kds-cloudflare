@@ -539,7 +539,7 @@ function rOrders(){
   const g=document.createElement('div');g.className='og';
 
   S.tickets.forEach(t=>{
-    const urg=t.wait_mins>=15?'urg':(t.wait_mins>=8?'wrn':'');
+    const urg=(t.wait_secs||0)>=900?'urg':((t.wait_secs||0)>=480?'wrn':'');
     // Pin-Farbe: höchstpriorisiertes gepinntes Produkt im Bon
     const pinMatch=t.items.map(i=>PINS[i.product_name]).filter(Boolean).sort((a,b)=>a.slot-b.slot)[0];
     const pinColor=pinMatch&&pinMatch.color?pinMatch.color:null;
@@ -557,7 +557,7 @@ function rOrders(){
       return '<div class="'+cls+'"'+click+'><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="t-qty">'+i.quantity+'×</span><span class="t-name">'+i.product_name+'</span>'+badge+'</div>'+extras+'</div>';
     }).join('');
     const hasSel=t.items.some((_,idx)=>(S.sel[t.id+'-'+idx]||0)>0);
-    card.innerHTML='<div class="tc-head"><div><div class="tc-num">#'+t.ticket_number+'</div><div class="tc-tbl">'+(t.table_number||'Bon #'+t.ticket_number)+'</div></div><div style="display:flex;align-items:center;gap:6px"><span class="tc-wait '+urg+'">'+t.wait_mins+'min</span>'+(t.station_color?'<span class="s-badge" style="background:'+t.station_color+'22;color:'+t.station_color+';border:1px solid '+t.station_color+'44">'+t.station_name+'</span>':'')+'</div></div><div class="tc-items">'+itemsHtml+'</div><div class="tc-foot"><button class="btn-p" onclick="prt('+t.id+')" '+(t.status==='printing'?'disabled':'')+'>🖨 '+(t.status==='printing'?'Druckt…':'Drucken')+'</button><button class="btn-partial" id="bp-'+t.id+'" onclick="partPrt('+t.id+')" '+(hasSel?'':'disabled')+'>✂ Teildruck</button></div>';
+    card.innerHTML='<div class="tc-head"><div><div class="tc-num">#'+t.ticket_number+'</div><div class="tc-tbl">'+(t.table_number||'Bon #'+t.ticket_number)+'</div></div><div style="display:flex;align-items:center;gap:6px"><span class="tc-wait '+urg+'">'+fmtDauer(t.wait_secs)+'</span>'+(t.station_color?'<span class="s-badge" style="background:'+t.station_color+'22;color:'+t.station_color+';border:1px solid '+t.station_color+'44">'+t.station_name+'</span>':'')+'</div></div><div class="tc-items">'+itemsHtml+'</div><div class="tc-foot"><button class="btn-p" onclick="prt('+t.id+')" '+(t.status==='printing'?'disabled':'')+'>🖨 '+(t.status==='printing'?'Druckt…':'Drucken')+'</button><button class="btn-partial" id="bp-'+t.id+'" onclick="partPrt('+t.id+')" '+(hasSel?'':'disabled')+'>✂ Teildruck</button></div>';
     g.appendChild(card);
   });
   ta.innerHTML='';ta.appendChild(g);
@@ -864,8 +864,8 @@ async function histLoad() {
       var badge = isSent
         ? '<span class="hr-badge sent">✓ ' + (gedruckt || 'gedruckt') + '</span>'
         : '<span class="hr-badge open">⏳ offen</span>';
-      var dauer = isSent && t.wait_mins !== undefined
-        ? '<span class="hr-dauer">'+t.wait_mins+' min</span>' : '';
+      var dauer = isSent && t.wait_secs !== undefined
+        ? '<span class="hr-dauer">'+fmtDauer(t.wait_secs)+'</span>' : '';
       var tisch = t.table_number || t.ticket_number;
       var kel = t.kellner ? '<span class="hr-kel">'+t.kellner+'</span>' : '';
       var bon = '<span class="hr-bon">#'+t.ticket_number+'</span>';
@@ -940,6 +940,14 @@ function dgKellner(k) {
     b.classList.toggle('active', b.textContent === (k||'Alle'));
   });
   dgLoad();
+}
+
+function fmtDauer(secs) {
+  if (!secs && secs !== 0) return '';
+  var s = Math.abs(secs);
+  var m = Math.floor(s / 60);
+  var sec = s % 60;
+  return m + ':' + String(sec).padStart(2,'0');
 }
 
 async function dgLoad() {
